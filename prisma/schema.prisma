@@ -1,0 +1,266 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  SUPER_ADMIN
+  ADMIN
+  SUPERVISOR
+  EMPLOYEE
+  VIEWER
+}
+
+enum ProjectCategory {
+  STATISTICAL_OPERATIONS
+  CIVIL_REGISTRATION_VITAL_STATISTICS
+  PHILIPPINE_IDENTIFICATION_SYSTEM
+  ADMINISTRATIVE_ACCOUNTING_REPORTS
+}
+
+enum ProjectFrequency {
+  MONTHLY
+  QUARTERLY
+  SEMI_ANNUAL
+  ANNUAL
+  AD_HOC
+}
+
+enum ProjectPriority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum ProjectStatus {
+  COMPLETED
+  OVERDUE
+  DUE_TODAY
+  DUE_SOON
+  ON_TRACK
+  NO_DEADLINE
+  INACTIVE
+}
+
+enum TaskStatus {
+  COMPLETED
+  OVERDUE
+  DUE_TODAY
+  DUE_SOON
+  ON_TRACK
+  NO_DEADLINE
+  INACTIVE
+}
+
+model User {
+  id              String          @id @default(cuid())
+  name            String
+  email           String          @unique
+  passwordHash    String
+  role            UserRole        @default(VIEWER)
+  personnelId     String?         @unique
+  personnel       Personnel?      @relation(fields: [personnelId], references: [id], onDelete: SetNull)
+  isActive        Boolean         @default(true)
+  lastLoginAt     DateTime?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  createdProjects Project[]       @relation("ProjectCreatedBy")
+  updatedProjects Project[]       @relation("ProjectUpdatedBy")
+  editableProjects ProjectEditor[]
+  remarks         ProjectRemark[]
+  auditLogs       AuditLog[]
+
+  @@index([role])
+  @@index([isActive])
+}
+
+model Personnel {
+  id                 String             @id @default(cuid())
+  employeeNo         String?            @unique
+  fullName           String
+  position           String
+  section            String
+  email              String?            @unique
+  contactNo          String?
+  isActive           Boolean            @default(true)
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+  users              User[]
+  projectAssignments ProjectPersonnel[]
+  assignedTasks      ProjectTask[]
+
+  @@index([section])
+  @@index([isActive])
+}
+
+model Project {
+  id                String             @id @default(cuid())
+  name              String
+  code              String?            @unique
+  description       String?
+  category          ProjectCategory
+  subcategory       String?
+  section           String?
+  year              Int
+  frequency         ProjectFrequency
+  priority          ProjectPriority    @default(MEDIUM)
+  workloadWeight    Float              @default(1)
+  estimatedMandays  Float              @default(0)
+  status            ProjectStatus      @default(ON_TRACK)
+  uiLayout          String             @default("BALANCED")
+  showOperationWorkload Boolean        @default(true)
+  showDeadlineSubmission Boolean       @default(true)
+  showDateSubmitted Boolean            @default(true)
+  showTotalSamplesDocuments Boolean    @default(true)
+  showResponseRate Boolean             @default(true)
+  operationWorkloadLabel String        @default("Project/Operation/Workload")
+  deadlineSubmissionLabel String       @default("Deadline of Submission")
+  dateSubmittedLabel String            @default("Date Submitted")
+  totalSamplesDocumentsLabel String    @default("Total Sample/Documents")
+  responseRateLabel String             @default("Response Rate")
+  customTaskColumns Json?
+  isActive          Boolean            @default(true)
+  createdById       String?
+  updatedById       String?
+  createdBy         User?              @relation("ProjectCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  updatedBy         User?              @relation("ProjectUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+  personnel         ProjectPersonnel[]
+  editors           ProjectEditor[]
+  cycles            ProjectCycle[]
+  remarks           ProjectRemark[]
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+
+  @@index([status])
+  @@index([category])
+  @@index([year])
+  @@index([isActive])
+}
+
+model ProjectEditor {
+  id        String   @id @default(cuid())
+  projectId String
+  userId    String
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([projectId, userId])
+  @@index([userId])
+}
+
+model ProjectPersonnel {
+  id             String    @id @default(cuid())
+  projectId      String
+  personnelId    String
+  roleInProject  String
+  isFocalPerson  Boolean   @default(false)
+  project        Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  personnel      Personnel @relation(fields: [personnelId], references: [id], onDelete: Cascade)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@unique([projectId, personnelId])
+  @@index([personnelId])
+  @@index([isFocalPerson])
+}
+
+model ProjectCycle {
+  id                    String          @id @default(cuid())
+  projectId             String
+  cycleName             String
+  month                 Int?
+  quarter               Int?
+  year                  Int
+  startDate             DateTime?
+  deadline              DateTime?
+  dateSubmitted         DateTime?
+  progress              Int             @default(0)
+  responseRate          Float?
+  totalSamplesDocuments Int?
+  status                ProjectStatus   @default(ON_TRACK)
+  remarks               String?
+  isActive              Boolean         @default(true)
+  project               Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  tasks                 ProjectTask[]
+  projectRemarks        ProjectRemark[]
+  createdAt             DateTime        @default(now())
+  updatedAt             DateTime        @updatedAt
+
+  @@index([projectId])
+  @@index([status])
+  @@index([deadline])
+  @@unique([projectId, cycleName, year])
+}
+
+model ProjectTask {
+  id                    String          @id @default(cuid())
+  projectCycleId        String
+  taskName              String
+  assignedPersonnelId   String?
+  startDate             DateTime?
+  deadline              DateTime?
+  dateSubmitted         DateTime?
+  progress              Int             @default(0)
+  status                TaskStatus      @default(ON_TRACK)
+  responseRate          Float?
+  totalSamplesDocuments Int?
+  customValues          Json?
+  remarks               String?
+  isActive              Boolean         @default(true)
+  projectCycle          ProjectCycle    @relation(fields: [projectCycleId], references: [id], onDelete: Cascade)
+  assignedPersonnel     Personnel?      @relation(fields: [assignedPersonnelId], references: [id], onDelete: SetNull)
+  projectRemarks        ProjectRemark[]
+  createdAt             DateTime        @default(now())
+  updatedAt             DateTime        @updatedAt
+
+  @@index([projectCycleId])
+  @@index([assignedPersonnelId])
+  @@index([status])
+  @@index([deadline])
+  @@unique([projectCycleId, taskName])
+}
+
+model ProjectRemark {
+  id             String        @id @default(cuid())
+  projectId      String?
+  projectCycleId String?
+  taskId         String?
+  authorId       String
+  remarkText     String
+  project        Project?      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectCycle   ProjectCycle? @relation(fields: [projectCycleId], references: [id], onDelete: Cascade)
+  task           ProjectTask?  @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  author         User          @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  @@index([projectId])
+  @@index([projectCycleId])
+  @@index([taskId])
+  @@index([authorId])
+}
+
+model AuditLog {
+  id           String   @id @default(cuid())
+  userId       String?
+  action       String
+  entityType   String
+  entityId     String
+  oldValueJson Json?
+  newValueJson Json?
+  ipAddress    String?
+  userAgent    String?
+  user         User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  createdAt    DateTime @default(now())
+
+  @@index([entityType, entityId])
+  @@index([userId])
+  @@index([createdAt])
+}
