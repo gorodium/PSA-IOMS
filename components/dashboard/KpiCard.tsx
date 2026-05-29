@@ -23,7 +23,7 @@ export function KpiCard({
           <p className="mt-2 text-3xl font-semibold tracking-normal text-current">{value}</p>
           {description ? <p className="mt-2 text-xs text-muted-foreground">{description}</p> : null}
         </div>
-        <div className="rounded-md bg-accent p-2 text-accent-foreground">
+        <div className="rounded-md bg-primary p-2 text-primary-foreground dark:bg-accent dark:text-accent-foreground">
           <Icon className="h-5 w-5" aria-hidden="true" />
         </div>
       </CardContent>

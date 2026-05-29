@@ -1,0 +1,225 @@
+
+> ioms@0.1.0 dev
+> next dev --port 3001
+
+   ▲ Next.js 15.5.18
+   - Local:        http://localhost:3001
+   - Network:      http://192.168.227.16:3001
+   - Environments: .env
+   - Experiments (use with caution):
+     · serverActions
+     · middlewareClientMaxBodySize: "25mb"
+
+ ✓ Starting...
+ ✓ Ready in 3.3s
+ ○ Compiling /middleware ...
+ ✓ Compiled /middleware in 627ms (115 modules)
+ ○ Compiling /login ...
+ ✓ Compiled /login in 5.3s (610 modules)
+ GET /login?next=%2Fsettings%2Fpdf-templates 200 in 6175ms
+ ✓ Compiled in 2.7s (242 modules)
+ ✓ Compiled in 436ms (242 modules)
+ ✓ Compiled in 574ms (242 modules)
+ GET /login?next=%2Fsettings%2Fpdf-templates 200 in 152ms
+ ○ Compiling /settings/pdf-templates ...
+ ✓ Compiled /settings/pdf-templates in 8.3s (1449 modules)
+ GET /settings/pdf-templates 200 in 9738ms
+ ○ Compiling /settings/pdf-templates/upload ...
+ ✓ Compiled /settings/pdf-templates/upload in 1303ms (1461 modules)
+ POST /settings/pdf-templates/upload?name=Flag+Ceremony+Program&description=&templateFeature=CONVOCATION_PROGRAM 200 in 5521ms
+ GET /settings/pdf-templates 200 in 336ms
+ ○ Compiling /room-reservations ...
+ ✓ Compiled /room-reservations in 1438ms (1497 modules)
+ GET /room-reservations 200 in 2761ms
+ ○ Compiling /settings ...
+ ✓ Compiled /settings in 1174ms (1520 modules)
+ GET /settings 200 in 1997ms
+ GET /settings 200 in 181ms
+ GET /settings/pdf-templates 200 in 835ms
+ POST /settings/pdf-templates 200 in 570ms
+ ○ Compiling /convocation ...
+ ✓ Compiled /convocation in 5.7s (1494 modules)
+ GET /convocation 200 in 7169ms
+ GET /convocation 200 in 955ms
+ ○ Compiling /convocation/[id]/print ...
+ ✓ Compiled /convocation/[id]/print in 2.3s (1493 modules)
+ GET /convocation/cmpp8tlnp0005iap48q5qcc4q/print 200 in 4244ms
+ GET /convocation 200 in 759ms
+ ○ Compiling /convocation/[id] ...
+ ✓ Compiled /convocation/[id] in 7s (1617 modules)
+ GET /convocation/cmpp8tlnp0005iap48q5qcc4q 200 in 9354ms
+ ✓ Compiled in 1814ms (434 modules)
+ GET /convocation/cmpp8tlnp0005iap48q5qcc4q 200 in 321ms
+ ✓ Compiled in 1058ms (434 modules)
+ GET /convocation/cmpp8tlnp0005iap48q5qcc4q 200 in 320ms
+ ✓ Compiled in 1080ms (434 modules)
+ GET /convocation/cmpp8tlnp0005iap48q5qcc4q 200 in 324ms
+ ✓ Compiled in 940ms (434 modules)
+ GET /convocation/cmpp8tlnp0005iap48q5qcc4q 200 in 395ms
+ ✓ Compiled in 1699ms (434 modules)
+ GET /convocation/cmpp8tlnp0005iap48q5qcc4q 200 in 479ms
+ ✓ Compiled in 1161ms (434 modules)
+ GET /convocation/cmpp8tlnp0005iap48q5qcc4q 200 in 311ms
+ ✓ Compiled in 982ms (434 modules)
+ GET /convocation/cmpp8tlnp0005iap48q5qcc4q 200 in 440ms
+ ✓ Compiled in 935ms (434 modules)
+ GET /convocation/cmpp8tlnp0005iap48q5qcc4q 200 in 347ms
+ ✓ Compiled in 1809ms (434 modules)
+ ✓ Compiled in 1115ms (434 modules)
+ GET /convocation/cmpp8tlnp0005iap48q5qcc4q 200 in 1624ms
+ GET /convocation/cmpp8tlnp0005iap48q5qcc4q 200 in 381ms
+ ✓ Compiled in 999ms (434 modules)
+ GET /convocation/cmpp8tlnp0005iap48q5qcc4q 200 in 373ms
+ ✓ Compiled in 1598ms (434 modules)
+ GET /convocation/cmpp8tlnp0005iap48q5qcc4q 200 in 392ms
+ ✓ Compiled in 1221ms (434 modules)
+ GET /convocation/cmpp8tlnp0005iap48q5qcc4q 200 in 348ms
+ ✓ Compiled in 1010ms (434 modules)
+ GET /convocation/cmpp8tlnp0005iap48q5qcc4q 200 in 287ms
+ ✓ Compiled in 1478ms (434 modules)
+ GET /convocation/cmpp8tlnp0005iap48q5qcc4q 200 in 262ms
+ ✓ Compiled in 1044ms (434 modules)
+ GET /convocation/cmpp8tlnp0005iap48q5qcc4q 200 in 238ms
+ ✓ Compiled in 963ms (434 modules)
+ GET /convocation/cmpp8tlnp0005iap48q5qcc4q 200 in 214ms
+ ✓ Compiled in 936ms (434 modules)
+ GET /convocation/cmpp8tlnp0005iap48q5qcc4q 200 in 353ms
+ ✓ Compiled in 1709ms (434 modules)
+ GET /convocation/cmpp8tlnp0005iap48q5qcc4q 200 in 310ms
+ ✓ Compiled in 963ms (434 modules)
+ GET /convocation/cmpp8tlnp0005iap48q5qcc4q 200 in 310ms
+ ✓ Compiled in 964ms (434 modules)
+ GET /convocation/cmpp8tlnp0005iap48q5qcc4q 200 in 303ms
+ ✓ Compiled in 1580ms (434 modules)
+ GET /convocation/cmpp8tlnp0005iap48q5qcc4q 200 in 416ms
+ ✓ Compiled in 993ms (434 modules)
+ GET /convocation/cmpp8tlnp0005iap48q5qcc4q 200 in 320ms
+ GET /convocation/cmpp8tlnp0005iap48q5qcc4q 200 in 768ms
+ GET /convocation/cmpp8tlnp0005iap48q5qcc4q 200 in 1129ms
+ GET /convocation/cmpp8tlnp0005iap48q5qcc4q 200 in 1163ms
+ ✓ Compiled in 1489ms (434 modules)
+ GET /convocation/cmpp8tlnp0005iap48q5qcc4q 200 in 450ms
+ GET /convocation/cmpp8tlnp0005iap48q5qcc4q 200 in 396ms
+ ✓ Compiled in 929ms (434 modules)
+ GET /convocation/cmpp8tlnp0005iap48q5qcc4q 200 in 490ms
+ GET /convocation/cmpp8tlnp0005iap48q5qcc4q 200 in 496ms
+ ✓ Compiled in 904ms (434 modules)
+ GET /convocation/cmpp8tlnp0005iap48q5qcc4q 200 in 428ms
+ GET /convocation/cmpp8tlnp0005iap48q5qcc4q 200 in 448ms
+ ✓ Compiled in 1767ms (434 modules)
+ GET /convocation/cmpp8tlnp0005iap48q5qcc4q 200 in 628ms
+ GET /convocation/cmpp8tlnp0005iap48q5qcc4q 200 in 549ms
+ ✓ Compiled in 1240ms (434 modules)
+ GET /convocation/cmpp8tlnp0005iap48q5qcc4q 200 in 566ms
+ GET /convocation/cmpp8tlnp0005iap48q5qcc4q 200 in 531ms
+ ✓ Compiled in 1861ms (434 modules)
+ GET /convocation/cmpp8tlnp0005iap48q5qcc4q 200 in 498ms
+ GET /convocation/cmpp8tlnp0005iap48q5qcc4q 200 in 523ms
+ ✓ Compiled in 1011ms (434 modules)
+ GET /convocation/cmpp8tlnp0005iap48q5qcc4q 200 in 571ms
+ GET /convocation/cmpp8tlnp0005iap48q5qcc4q 200 in 530ms
+ ✓ Compiled in 1616ms (434 modules)
+ GET /convocation/cmpp8tlnp0005iap48q5qcc4q 200 in 572ms
+ GET /convocation/cmpp8tlnp0005iap48q5qcc4q 200 in 290ms
+ ✓ Compiled in 1087ms (434 modules)
+ GET /convocation/cmpp8tlnp0005iap48q5qcc4q 200 in 476ms
+ GET /convocation/cmpp8tlnp0005iap48q5qcc4q 200 in 490ms
+ ✓ Compiled in 1689ms (434 modules)
+ GET /convocation/cmpp8tlnp0005iap48q5qcc4q 200 in 1324ms
+ GET /convocation/cmpp8tlnp0005iap48q5qcc4q 200 in 1332ms
+ ✓ Compiled in 970ms (434 modules)
+ GET /convocation/cmpp8tlnp0005iap48q5qcc4q 200 in 591ms
+ GET /convocation/cmpp8tlnp0005iap48q5qcc4q 200 in 631ms
+ ✓ Compiled in 1884ms (434 modules)
+ GET /convocation/cmpp8tlnp0005iap48q5qcc4q 200 in 726ms
+ GET /convocation/cmpp8tlnp0005iap48q5qcc4q 200 in 401ms
+ ✓ Compiled in 1904ms (434 modules)
+ GET /convocation/cmpp8tlnp0005iap48q5qcc4q 200 in 613ms
+ GET /convocation/cmpp8tlnp0005iap48q5qcc4q 200 in 559ms
+ ✓ Compiled in 2.2s (434 modules)
+ GET /convocation/cmpp8tlnp0005iap48q5qcc4q 200 in 588ms
+ GET /convocation/cmpp8tlnp0005iap48q5qcc4q 200 in 557ms
+ ✓ Compiled in 1105ms (434 modules)
+ GET /convocation/cmpp8tlnp0005iap48q5qcc4q 200 in 633ms
+ GET /convocation/cmpp8tlnp0005iap48q5qcc4q 200 in 583ms
+ ✓ Compiled in 1833ms (434 modules)
+ GET /convocation/cmpp8tlnp0005iap48q5qcc4q 200 in 622ms
+ GET /convocation/cmpp8tlnp0005iap48q5qcc4q 200 in 545ms
+ ✓ Compiled in 963ms (434 modules)
+ GET /convocation/cmpp8tlnp0005iap48q5qcc4q 200 in 508ms
+ GET /convocation/cmpp8tlnp0005iap48q5qcc4q 200 in 537ms
+ ✓ Compiled in 893ms (434 modules)
+ GET /convocation/cmpp8tlnp0005iap48q5qcc4q 200 in 450ms
+ GET /convocation/cmpp8tlnp0005iap48q5qcc4q 200 in 480ms
+ ✓ Compiled in 1908ms (434 modules)
+ GET /convocation/cmpp8tlnp0005iap48q5qcc4q 200 in 576ms
+ GET /convocation/cmpp8tlnp0005iap48q5qcc4q 200 in 526ms
+ ✓ Compiled in 1054ms (434 modules)
+ GET /convocation/cmpp8tlnp0005iap48q5qcc4q 200 in 555ms
+ GET /convocation/cmpp8tlnp0005iap48q5qcc4q 200 in 519ms
+ ✓ Compiled in 856ms (434 modules)
+ GET /convocation/cmpp8tlnp0005iap48q5qcc4q 200 in 468ms
+ GET /convocation/cmpp8tlnp0005iap48q5qcc4q 200 in 491ms
+ ✓ Compiled in 1642ms (434 modules)
+ GET /convocation/cmpp8tlnp0005iap48q5qcc4q 200 in 483ms
+ GET /convocation/cmpp8tlnp0005iap48q5qcc4q 200 in 491ms
+ ✓ Compiled in 1014ms (434 modules)
+ GET /convocation/cmpp8tlnp0005iap48q5qcc4q 200 in 496ms
+ GET /convocation/cmpp8tlnp0005iap48q5qcc4q 200 in 520ms
+ ✓ Compiled in 990ms (434 modules)
+ GET /convocation/cmpp8tlnp0005iap48q5qcc4q 200 in 487ms
+ GET /convocation/cmpp8tlnp0005iap48q5qcc4q 200 in 528ms
+ ✓ Compiled in 1778ms (434 modules)
+ GET /convocation/cmpp8tlnp0005iap48q5qcc4q 200 in 598ms
+ GET /convocation/cmpp8tlnp0005iap48q5qcc4q 200 in 607ms
+ ✓ Compiled in 1024ms (434 modules)
+ GET /convocation/cmpp8tlnp0005iap48q5qcc4q 200 in 488ms
+ GET /convocation/cmpp8tlnp0005iap48q5qcc4q 200 in 495ms
+ ✓ Compiled in 1673ms (434 modules)
+ ✓ Compiled in 1386ms (434 modules)
+ GET /convocation/cmpp8tlnp0005iap48q5qcc4q 200 in 3109ms
+ GET /convocation/cmpp8tlnp0005iap48q5qcc4q 200 in 3363ms
+ ✓ Compiled in 7.4s (1631 modules)
+ GET /convocation/cmpp8tlnp0005iap48q5qcc4q 200 in 10373ms
+ GET /convocation/cmpp8tlnp0005iap48q5qcc4q 200 in 10567ms
+ GET /convocation/cmpp8tlnp0005iap48q5qcc4q 200 in 2740ms
+ ✓ Compiled in 4.5s (1631 modules)
+ GET /convocation/cmpp8tlnp0005iap48q5qcc4q 200 in 4398ms
+ GET /convocation/cmpp8tlnp0005iap48q5qcc4q 200 in 1751ms
+ GET /convocation/cmpp8tlnp0005iap48q5qcc4q 200 in 233ms
+ ✓ Compiled in 1255ms (434 modules)
+ GET /convocation/cmpp8tlnp0005iap48q5qcc4q 200 in 490ms
+ GET /convocation/cmpp8tlnp0005iap48q5qcc4q 200 in 525ms
+ ✓ Compiled in 982ms (434 modules)
+ GET /convocation/cmpp8tlnp0005iap48q5qcc4q 200 in 477ms
+ GET /convocation/cmpp8tlnp0005iap48q5qcc4q 200 in 484ms
+ ✓ Compiled in 1807ms (434 modules)
+ GET /convocation/cmpp8tlnp0005iap48q5qcc4q 200 in 503ms
+ GET /convocation/cmpp8tlnp0005iap48q5qcc4q 200 in 538ms
+ ✓ Compiled in 978ms (434 modules)
+ GET /convocation/cmpp8tlnp0005iap48q5qcc4q 200 in 456ms
+ GET /convocation/cmpp8tlnp0005iap48q5qcc4q 200 in 463ms
+ ✓ Compiled in 1141ms (434 modules)
+ GET /convocation/cmpp8tlnp0005iap48q5qcc4q 200 in 583ms
+ GET /convocation/cmpp8tlnp0005iap48q5qcc4q 200 in 609ms
+ ✓ Compiled in 1113ms (434 modules)
+ GET /convocation/cmpp8tlnp0005iap48q5qcc4q 200 in 630ms
+ GET /convocation/cmpp8tlnp0005iap48q5qcc4q 200 in 537ms
+ ✓ Compiled in 1006ms (434 modules)
+ GET /convocation/cmpp8tlnp0005iap48q5qcc4q 200 in 592ms
+ GET /convocation/cmpp8tlnp0005iap48q5qcc4q 200 in 532ms
+ ✓ Compiled in 922ms (434 modules)
+ GET /convocation/cmpp8tlnp0005iap48q5qcc4q 200 in 475ms
+ GET /convocation/cmpp8tlnp0005iap48q5qcc4q 200 in 518ms
+ ✓ Compiled in 1929ms (434 modules)
+ GET /convocation/cmpp8tlnp0005iap48q5qcc4q 200 in 832ms
+ GET /convocation/cmpp8tlnp0005iap48q5qcc4q 200 in 602ms
+ ✓ Compiled in 6.4s (1631 modules)
+ GET /convocation/cmpp8tlnp0005iap48q5qcc4q 200 in 1128ms
+ GET /convocation/cmpp8tlnp0005iap48q5qcc4q 200 in 1158ms
+ ✓ Compiled in 3.3s (1631 modules)
+ GET /convocation/cmpp8tlnp0005iap48q5qcc4q 200 in 776ms
+ GET /convocation/cmpp8tlnp0005iap48q5qcc4q 200 in 715ms
+ ✓ Compiled in 9.6s (1631 modules)
+ GET /convocation/cmpp8tlnp0005iap48q5qcc4q 200 in 6815ms
+ GET /convocation/cmpp8tlnp0005iap48q5qcc4q 200 in 6844ms

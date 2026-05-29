@@ -25,7 +25,7 @@ export function RemarkBox({
   return (
     <div className="space-y-4">
       {canComment ? (
-        <form action={addProjectRemarkAction} className="space-y-3 rounded-lg border bg-white p-4">
+        <form action={addProjectRemarkAction} className="space-y-3 rounded-lg border bg-white dark:bg-slate-900 dark:border-slate-800 p-4">
           <input type="hidden" name="projectId" value={projectId} />
           <Textarea name="remarkText" required placeholder="Add a monitoring remark or update." />
           <Button type="submit">
@@ -36,11 +36,11 @@ export function RemarkBox({
       ) : null}
       <div className="space-y-3">
         {remarks.length === 0 ? (
-          <div className="rounded-lg border bg-white p-5 text-sm text-muted-foreground">No remarks have been recorded.</div>
+          <div className="rounded-lg border bg-white dark:bg-slate-900 dark:border-slate-800 p-5 text-sm text-muted-foreground">No remarks have been recorded.</div>
         ) : (
           remarks.map((remark) => (
-            <article key={remark.id} className="rounded-lg border bg-white p-4">
-              <p className="whitespace-pre-wrap text-sm text-slate-800">{remark.remarkText}</p>
+            <article key={remark.id} className="rounded-lg border bg-white dark:bg-slate-900 dark:border-slate-800 p-4">
+              <p className="whitespace-pre-wrap text-sm text-slate-800 dark:text-slate-200">{remark.remarkText}</p>
               <p className="mt-3 text-xs text-muted-foreground">
                 {remark.author.name} · {formatDateTime(remark.createdAt)}
               </p>

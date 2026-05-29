@@ -2,7 +2,7 @@
 
 IOMS is a Phase 1 internal web system for monitoring government statistical office projects. It is designed to replace a Google Sheet monitoring board with a cleaner, more secure, and more maintainable dashboard.
 
-This first version focuses only on project monitoring. It includes login, roles, project dashboards, personnel records, project details, task progress updates, remarks, audit logs, and seed data.
+The current version focuses on project monitoring and a controlled vehicle use request workflow. It includes login, roles, project dashboards, personnel records, project details, task progress updates, remarks, audit logs, vehicle scheduling, and seed data for local development.
 
 ## What This App Does
 
@@ -42,6 +42,16 @@ Included in Phase 1:
 - Personnel list with add and edit forms.
 - Admin overview page.
 - Audit log table.
+- Vehicle Scheduling / Vehicle Use Request page for logged-in employees.
+- Admin vehicle request management with real vehicle registration, availability checks, SO reference, and SO attachment upload.
+- Printable vehicle request form that can be saved as PDF from the browser.
+- Approved or assigned vehicle requests appear in the Calendar of Activities.
+- Room Reservation page for logged-in employees.
+- Admin room reservation management with official room availability controls and overlap checks.
+- Approved room reservations appear in the Calendar of Activities.
+- Convocation Program Assigner with three rotating Monday groups.
+- Admin group membership setup, technical-person exemption, task overrides, and printable formal convocation program.
+- Finalized convocation programs appear in the Calendar of Activities.
 - Prisma database schema.
 - PostgreSQL database support.
 - Seed data for testing and demonstration.
@@ -49,12 +59,10 @@ Included in Phase 1:
 
 Not included in Phase 1:
 
-- Vehicle scheduling.
 - Convocation assignment.
 - Full Gantt charts.
-- PDF exports.
+- Bulk PDF exports.
 - Email notifications.
-- Full user management screens.
 
 ## Tech Stack
 
@@ -148,6 +156,105 @@ Basic admin landing page with links and seed data information.
 
 Audit log table showing recent activity.
 
+### `/vehicle-requests`
+
+Logged-in employees can submit vehicle use requests. The requester is taken from the signed-in user's linked employee record, and other travel companions must be selected from existing active employee records.
+
+Each request records:
+
+- travel date;
+- optional departure and expected return time;
+- purpose of travel;
+- destination;
+- other employees joining the travel;
+- current request status;
+- assigned vehicle and SO details when an admin has reviewed it.
+
+### `/vehicle-requests/admin`
+
+Admin-only page for managing vehicle requests. Admins can:
+
+- add actual office vehicles to the vehicle registry;
+- view pending, approved, assigned, rejected, and cancelled requests;
+- filter requests by status or travel date;
+- assign an available real vehicle;
+- add an SO number or reference;
+- upload the hard copy of the SO;
+- approve, assign, reject, or cancel requests.
+
+The app prevents assigning the same vehicle to overlapping approved or assigned schedules. If no real vehicles are registered, the page shows an empty state and asks admins to add actual vehicles first.
+
+### `/vehicle-requests/[id]/print`
+
+Printable official-looking vehicle request form. Use the browser print dialog to print or save it as PDF. The form uses saved request data only; unassigned vehicles or SO references are shown as pending assignment.
+
+### `/room-reservations`
+
+Logged-in employees can request room usage. The requester is taken from the signed-in user's linked employee record.
+
+The room reservation feature supports only these official rooms:
+
+- Conference Room
+- Training Room
+- Pantry 1
+- Pantry 2
+
+Conference Room is visible but unavailable by default with the reason `Being used by CBMS`.
+
+Employees can request:
+
+- half-day reservations with Morning or Afternoon slots;
+- multiple-day reservations with start and end dates;
+- purpose and optional remarks.
+
+### `/room-reservations/admin`
+
+Admin-only page for managing room reservations. Admins can:
+
+- view all reservation requests;
+- filter by status, room, and date;
+- approve, reject, or cancel requests;
+- see approved reservation conflicts before approval;
+- mark rooms available or unavailable;
+- edit the unavailability reason.
+
+Approved room reservations sync into the Calendar of Activities as `ROOM` activities. Rejected and cancelled reservations are hidden from the active calendar view.
+
+### `/convocation`
+
+Logged-in users can view the current or upcoming Convocation Program. Admins can open the management screen from this page.
+
+The module supports:
+
+- three rotating convocation groups;
+- Monday-based program generation;
+- group assignment preservation for already generated Mondays;
+- saved assignment history for future rotation;
+- technical-person exemption from standard task rotation;
+- National Anthem and Emcee mirroring by default;
+- printable formal program output.
+
+### `/convocation/admin`
+
+Admin-only page for managing convocation setup and weekly programs. Admins can:
+
+- assign real employees to Group 1, Group 2, and Group 3;
+- mark technical persons and group leads;
+- generate the next Monday program;
+- manually choose a group override for a specific date;
+- configure future template items as fixed, assignable, mirrored, enabled, or disabled;
+- open saved programs for review and printing.
+
+No employee memberships are created automatically. The three group containers and default program template are created so admins can assign real personnel through the UI.
+
+### `/convocation/[id]`
+
+Program detail page. Admins can override task assignments, toggle items, change fixed text values, and finalize the program. Finalization writes rotation history and syncs the program into the Calendar of Activities.
+
+### `/convocation/[id]/print`
+
+Printable formal Convocation Program. It includes cover, institutional statements, pledges, quality policy, and program flow with assigned names. Use the browser print dialog to print or save as PDF.
+
 ### `/settings`
 
 Super Admin settings page. It allows the Super Admin to:
@@ -192,6 +299,7 @@ This keeps permission rules out of page and component code.
 
 - Can view public monitoring pages.
 - Can edit only the project pages assigned in Settings.
+- Can manage vehicle requests and assign vehicles.
 
 `SUPERVISOR`
 
@@ -204,6 +312,7 @@ This keeps permission rules out of page and component code.
 - Can view the dashboard and project records.
 - Can update assigned task information.
 - Can add remarks.
+- Can submit and view their own vehicle requests.
 
 `VIEWER`
 
@@ -325,6 +434,17 @@ The Prisma schema includes:
 - `ProjectTask`
 - `ProjectRemark`
 - `AuditLog`
+- `Vehicle`
+- `VehicleRequest`
+- `VehicleRequestPassenger`
+- `Room`
+- `RoomReservation`
+- `ConvocationGroup`
+- `ConvocationGroupMember`
+- `ConvocationTemplateItem`
+- `ConvocationProgram`
+- `ConvocationProgramItem`
+- `ConvocationAssignmentHistory`
 
 It also includes enums for:
 
@@ -334,8 +454,20 @@ It also includes enums for:
 - `ProjectPriority`
 - `ProjectStatus`
 - `TaskStatus`
+- `VehicleRequestStatus`
+- `RoomReservationStatus`
+- `RoomReservationType`
+- `HalfDaySlot`
+- `ConvocationProgramStatus`
+- `ConvocationAssignmentMode`
 
 Most records use soft-disable behavior with `isActive`. Normal app actions should not permanently delete records.
+
+Vehicle scheduling tables are additive. They do not create or seed vehicles automatically; admins must add actual office vehicles through `/vehicle-requests/admin`.
+
+Room reservation tables are additive. The system inserts only the four official rooms listed above and does not create sample reservation records.
+
+Convocation tables are additive. The system inserts only the three official group containers and the default program template; it does not create fake members, fake programs, fake assignments, fake history, or fake calendar activities.
 
 ## Project Categories
 
@@ -528,7 +660,6 @@ After setup, verify these items:
 - `/dashboard` shows KPI cards.
 - `/dashboard` shows the project status chart.
 - `/dashboard` shows the Needs Attention table.
-- `/dashboard` shows the current date at the bottom right.
 - `/dashboard` shows the upcoming nearest project deadline.
 - `/projects` shows seeded projects.
 - Project filters work by status, category, year, personnel, and active state.
@@ -543,6 +674,29 @@ After setup, verify these items:
 - `/personnel` shows seeded personnel.
 - Authorized users can add and edit personnel.
 - `/admin/audit-logs` shows audit records.
+- `/vehicle-requests` redirects logged-out users to `/login`.
+- A logged-in employee with a linked personnel record can submit a vehicle request.
+- Joining employees are selected from existing active personnel records only.
+- `/vehicle-requests/admin` is available only to admins.
+- Admins can add actual vehicles and assign only available vehicles.
+- If every active vehicle is already scheduled for the selected date or time, the admin page shows a clear warning.
+- Approved or assigned vehicle requests appear in `/calendar` as vehicle usage.
+- `/vehicle-requests/[id]/print` opens a printable form that can be saved as PDF.
+- `/room-reservations` redirects logged-out users to `/login`.
+- The Room Reservation sidebar shortcut appears near Vehicle Scheduling.
+- The room page shows exactly Conference Room, Training Room, Pantry 1, and Pantry 2.
+- Conference Room is visible but unavailable with the reason `Being used by CBMS`.
+- Employees can submit half-day or multiple-day reservation requests.
+- Admins can approve, reject, cancel, and manage room availability from `/room-reservations/admin`.
+- Approved room reservations appear in `/calendar` as room reservations.
+- `/convocation` redirects logged-out users to `/login`.
+- The Convocation Program sidebar shortcut appears near Vehicle Scheduling and Room Reservation.
+- `/convocation/admin` shows Group 1, Group 2, and Group 3 with no fake members.
+- Admins can add only real active personnel to convocation groups.
+- Technical persons are marked and excluded from standard auto-rotation.
+- National Anthem and Emcee share the same assignee by default and count as one rotation role.
+- Generated programs can be opened, edited, finalized, printed, and reprinted.
+- Finalized convocation programs appear in `/calendar`.
 
 ## Automated Checks
 
@@ -588,7 +742,9 @@ Sample seeded projects:
 - Administrative Reports
 - Accounting Reports
 
-The seed data is for development and demonstration only.
+The seed data is for development and demonstration only. Do not run the seed command against a live office database with real records, because it is meant for a fresh local development database.
+
+The seed does not create vehicle records. Add actual office vehicles through the admin vehicle scheduling page.
 
 ## Common Workflow
 
@@ -599,7 +755,9 @@ The seed data is for development and demonstration only.
 5. Update task progress or submitted dates when work changes.
 6. Add remarks to record monitoring updates.
 7. Use `/personnel` to maintain staff records.
-8. Use `/admin/audit-logs` to review recorded actions.
+8. Use `/vehicle-requests` to submit and print vehicle use requests.
+9. Admins use `/vehicle-requests/admin` to register real vehicles, assign vehicles, add SO details, and approve or reject requests.
+10. Use `/admin/audit-logs` to review recorded actions.
 
 ## Troubleshooting
 
@@ -676,10 +834,9 @@ Future phases can add:
 
 - full user management;
 - stronger assignment rules for supervisors and employees;
-- vehicle scheduling;
 - convocation assignment;
 - full Gantt charts;
-- PDF exports;
+- bulk report PDF exports;
 - email notifications;
 - more detailed reporting and analytics.
 

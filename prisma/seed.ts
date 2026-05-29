@@ -380,23 +380,28 @@ const projectData = [
 ];
 
 async function main() {
-  const passwordHash = await bcrypt.hash("Admin12345!", 12);
+  const passwordHash = await bcrypt.hash("ChangeMe123!", 12);
   const admin = await prisma.user.upsert({
     where: {
-      email: "admin@ioms.local"
+      username: "superadmin"
     },
     update: {
-      name: "System Administrator",
+      name: "Super Admin",
+      email: "admin@ioms.local",
+      username: "superadmin",
       passwordHash,
       role: "SUPER_ADMIN",
-      isActive: true
+      isActive: true,
+      mustChangePassword: true
     },
     create: {
       email: "admin@ioms.local",
+      username: "superadmin",
       passwordHash,
-      name: "System Administrator",
+      name: "Super Admin",
       role: "SUPER_ADMIN",
-      isActive: true
+      isActive: true,
+      mustChangePassword: true
     }
   });
 
@@ -409,10 +414,12 @@ async function main() {
       },
       update: {
         ...person,
+        slug: person.fullName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, ''),
         isActive: true
       },
       create: {
         ...person,
+        slug: person.fullName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, ''),
         isActive: true
       }
     });
@@ -433,6 +440,7 @@ async function main() {
       },
       update: {
         name: projectSeed.name,
+        slug: projectSeed.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, ''),
         description: `${projectSeed.name} monitoring record for Phase 1 dashboard validation.`,
         category: projectSeed.category,
         subcategory: projectSeed.subcategory,
@@ -448,6 +456,7 @@ async function main() {
       },
       create: {
         name: projectSeed.name,
+        slug: projectSeed.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, ''),
         code: projectSeed.code,
         description: `${projectSeed.name} monitoring record for Phase 1 dashboard validation.`,
         category: projectSeed.category,

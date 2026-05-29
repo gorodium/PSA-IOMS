@@ -18,11 +18,11 @@ const emptyToNull = (value: unknown) => {
 };
 
 const optionalString = (max = 255) =>
-  z.preprocess(emptyToUndefined, z.string().trim().max(max, `Must be ${max} characters or less.`).optional());
+  z.preprocess(emptyToNull, z.string().trim().max(max, `Must be ${max} characters or less.`).nullable().optional());
 
 const optionalEmail = z.preprocess(
-  emptyToUndefined,
-  z.string().trim().email("Enter a valid email address.").max(255).optional()
+  emptyToNull,
+  z.string().trim().email("Enter a valid email address.").max(255).nullable().optional()
 );
 
 const optionalDate = z.preprocess(emptyToNull, z.coerce.date().nullable());
@@ -30,7 +30,7 @@ const optionalDate = z.preprocess(emptyToNull, z.coerce.date().nullable());
 const formBoolean = z.preprocess((value) => value === "on" || value === "true" || value === true, z.boolean());
 
 export const loginSchema = z.object({
-  email: z.string().trim().toLowerCase().email("Enter a valid email address."),
+  identifier: z.string().trim().min(1, "Enter a valid username or email address."),
   password: z.string().min(1, "Password is required.")
 });
 
@@ -43,10 +43,12 @@ export const createProjectSchema = z.object({
   section: optionalString(120),
   year: z.coerce.number().int().min(2000).max(2100),
   frequency: z.nativeEnum(ProjectFrequency),
-  priority: z.nativeEnum(ProjectPriority),
-  workloadWeight: z.coerce.number().min(0).max(999),
+  customFrequency: optionalString(),
+  priority: z.nativeEnum(ProjectPriority).default("MEDIUM"),
+  workloadWeight: z.coerce.number().min(0).max(10).default(1),
   estimatedMandays: z.coerce.number().min(0).max(99999),
   uiLayout: z.enum(["BALANCED", "DETAIL_FIRST", "TASK_FIRST"]).default("BALANCED"),
+  showDescription: formBoolean.default(true),
   showOperationWorkload: formBoolean.default(true),
   showDeadlineSubmission: formBoolean.default(true),
   showDateSubmitted: formBoolean.default(true),
@@ -58,7 +60,9 @@ export const createProjectSchema = z.object({
   totalSamplesDocumentsLabel: z.string().trim().min(1).max(120).default("Total Sample/Documents"),
   responseRateLabel: z.string().trim().min(1).max(120).default("Response Rate"),
   focalPersonnelId: optionalString(),
-  personnelIds: z.array(z.string()).default([]),
+  alternatePersonnelId: optionalString(),
+  assistantPersonnelId: optionalString(),
+  otherPersonnelIds: z.array(z.string()).default([]),
   isActive: formBoolean.default(true)
 });
 
@@ -68,12 +72,17 @@ export const updateProjectSchema = createProjectSchema.extend({
 
 export const createPersonnelSchema = z.object({
   employeeNo: optionalString(50),
-  fullName: z.string().trim().min(2, "Full name is required.").max(255),
+  fullName: z.string().trim().min(2, "Full Name is required.").max(255),
   position: z.string().trim().min(2, "Position is required.").max(255),
   section: z.string().trim().min(2, "Section is required.").max(120),
   email: optionalEmail,
   contactNo: optionalString(80),
-  isActive: formBoolean.default(true)
+  isActive: formBoolean.default(true),
+  locationStatus: z.enum(["office", "on_travel"]).default("office"),
+  travelDetails: optionalString(2000),
+  travelDestination: optionalString(255),
+  travelStartDate: optionalDate,
+  travelEndDate: optionalDate
 });
 
 export const updatePersonnelSchema = createPersonnelSchema.extend({
@@ -100,6 +109,13 @@ export const updateTaskSchema = createTaskSchema.partial().extend({
   dateSubmitted: optionalDate,
   responseRate: z.preprocess(emptyToUndefined, z.coerce.number().min(0).max(100).optional()),
   totalSamplesDocuments: z.preprocess(emptyToUndefined, z.coerce.number().int().min(0).optional()),
+  remarks: optionalString(2000)
+});
+
+export const updateCycleSchema = z.object({
+  id: z.string().min(1),
+  deadline: optionalDate,
+  dateSubmitted: optionalDate,
   remarks: optionalString(2000)
 });
 
@@ -146,3 +162,4 @@ export type CreateTaskInput = z.infer<typeof createTaskSchema>;
 export type UpdateTaskInput = z.infer<typeof updateTaskSchema>;
 export type CreateRemarkInput = z.infer<typeof createRemarkSchema>;
 export type AdminUserInput = z.infer<typeof adminUserSchema>;
+export type UpdateCycleInput = z.infer<typeof updateCycleSchema>;

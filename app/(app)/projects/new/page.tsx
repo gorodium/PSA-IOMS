@@ -24,7 +24,7 @@ export default async function NewProjectPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold tracking-normal text-slate-950">Add Project</h1>
+        <h1 className="text-2xl font-semibold tracking-normal text-slate-950 dark:text-slate-50">Add Project</h1>
         <p className="mt-1 text-sm text-muted-foreground">Create a Phase 1 monitoring record.</p>
       </div>
       <ProjectForm action={createProjectAction} personnel={personnel} submitLabel="Create project" />

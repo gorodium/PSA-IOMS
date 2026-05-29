@@ -104,7 +104,7 @@ export function TaskTable({
   return (
     <div className="space-y-3">
       {canEdit ? (
-        <div className="grid gap-3 rounded-lg border bg-white p-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+        <div className="grid gap-3 rounded-lg border bg-card p-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
           <form action={createTaskRowAction} className="flex flex-col gap-3 sm:flex-row">
             <input type="hidden" name="projectCycleId" value={cycles[0]?.id ?? ""} />
             <Input name="taskName" placeholder="New row name" required disabled={cycles.length === 0} />
@@ -139,9 +139,9 @@ export function TaskTable({
       ) : null}
 
       {tasks.length === 0 ? (
-        <div className="rounded-lg border bg-white p-6 text-sm text-muted-foreground">No active task rows have been added to this project yet.</div>
+        <div className="rounded-lg border bg-card p-6 text-sm text-muted-foreground">No active task rows have been added to this project yet.</div>
       ) : (
-        <div className="overflow-x-auto rounded-lg border bg-white">
+        <div className="overflow-x-auto rounded-lg border bg-card">
           <Table className="min-w-[980px]">
             <TableHeader>
               <TableRow>
@@ -156,7 +156,7 @@ export function TaskTable({
                     {column.label}
                   </TableHead>
                 ))}
-                <TableHead className="min-w-52">Assigned personnel</TableHead>
+                <TableHead className="min-w-52">Assigned employee</TableHead>
                 {canEdit ? <TableHead className="min-w-96">Edit row</TableHead> : null}
               </TableRow>
             </TableHeader>
@@ -164,7 +164,7 @@ export function TaskTable({
               {tasks.map((task) => (
                 <TableRow key={task.id}>
                   <TableCell>{task.cycleName}</TableCell>
-                  {project.showOperationWorkload ? <TableCell className="font-medium text-slate-950">{task.taskName}</TableCell> : null}
+                  {project.showOperationWorkload ? <TableCell className="font-medium text-slate-950 dark:text-slate-50">{task.taskName}</TableCell> : null}
                   {project.showDeadlineSubmission ? <TableCell>{formatDate(task.deadline)}</TableCell> : null}
                   {project.showDateSubmitted ? <TableCell>{formatDate(task.dateSubmitted, "Not submitted")}</TableCell> : null}
                   {project.showTotalSamplesDocuments ? <TableCell>{task.totalSamplesDocuments ?? "Not set"}</TableCell> : null}

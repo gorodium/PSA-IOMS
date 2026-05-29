@@ -1,6 +1,6 @@
 import { format } from "date-fns";
 
-export function formatDate(date: Date | string | null | undefined, fallback = "Not set") {
+export function formatDate(date: Date | string | null | undefined, fallback = "Not Set") {
   if (!date) {
     return fallback;
   }
@@ -14,7 +14,7 @@ export function formatDate(date: Date | string | null | undefined, fallback = "N
   return format(parsedDate, "MMM d, yyyy");
 }
 
-export function formatDateTime(date: Date | string | null | undefined, fallback = "Not set") {
+export function formatDateTime(date: Date | string | null | undefined, fallback = "Not Set") {
   if (!date) {
     return fallback;
   }

@@ -7,44 +7,41 @@ import { ProjectForm } from "@/components/projects/ProjectForm";
 
 type EditProjectPageProps = {
   params: Promise<{
-    id: string;
+    slug: string;
   }>;
 };
 
 export default async function EditProjectPage({ params }: EditProjectPageProps) {
-  const [{ id }, user] = await Promise.all([params, requireUser()]);
+  const [{ slug }, user] = await Promise.all([params, requireUser()]);
 
-  if (!(await canEditProject(user, id))) {
-    redirect(`/projects/${id}`);
-  }
-
-  const [project, personnel] = await Promise.all([
-    db.project.findUnique({
-      where: {
-        id
-      },
-      include: {
-        personnel: true
-      }
-    }),
-    db.personnel.findMany({
-      where: {
-        isActive: true
-      },
-      orderBy: {
-        fullName: "asc"
-      }
-    })
-  ]);
+  const project = await db.project.findUnique({
+    where: { slug },
+    include: {
+      personnel: true
+    }
+  });
 
   if (!project) {
     notFound();
   }
 
+  if (!(await canEditProject(user, project.id))) {
+    redirect(`/projects/${project.slug}`);
+  }
+
+  const personnel = await db.personnel.findMany({
+    where: {
+      isActive: true
+    },
+    orderBy: {
+      fullName: "asc"
+    }
+  });
+
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold tracking-normal text-slate-950">Edit Project</h1>
+        <h1 className="text-2xl font-semibold tracking-normal text-slate-950 dark:text-slate-50">Edit Project</h1>
         <p className="mt-1 text-sm text-muted-foreground">Update the project profile and personnel assignments.</p>
       </div>
       <ProjectForm action={updateProjectAction} personnel={personnel} project={project} submitLabel="Save project" />

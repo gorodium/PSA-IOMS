@@ -35,15 +35,15 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
           </div>
           <div>
             <CardTitle className="text-xl">PSA Misamis Oriental</CardTitle>
-            <CardDescription className="mt-2">Sign in with your office email and password.</CardDescription>
+            <CardDescription className="mt-2">Sign in with your username or office email.</CardDescription>
           </div>
         </CardHeader>
         <CardContent>
           <form action={loginAction} className="space-y-4">
             <input type="hidden" name="next" value={nextPath} />
             <div className="space-y-2">
-              <Label htmlFor="email">Email address</Label>
-              <Input id="email" name="email" type="email" autoComplete="email" required />
+              <Label htmlFor="identifier">Username or Email</Label>
+              <Input id="identifier" name="identifier" type="text" autoComplete="username" required />
             </div>
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>

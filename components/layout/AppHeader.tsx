@@ -7,11 +7,15 @@ import { ThemeToggle } from "@/components/layout/ThemeToggle";
 
 export function AppHeader({ user }: { user: AuthUser | null }) {
   return (
-    <header className="sticky top-0 z-20 border-b bg-white/95 backdrop-blur dark:bg-slate-950/95">
+    <header className="sticky top-0 z-20 border-b bg-white/95 backdrop-blur dark:border-slate-800 dark:bg-slate-950/95">
       <div className="flex h-16 items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
-        <div>
-          <p className="text-sm font-semibold text-slate-950 dark:text-slate-50 lg:hidden">PSA Misamis Oriental</p>
-          <p className="text-xs text-muted-foreground">Philippine Statistics Authority Misamis Oriental Integrated Operations Monitoring System</p>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-bold text-slate-950 dark:text-slate-50 lg:hidden leading-none mb-1">
+            PSA Misamis Oriental
+          </p>
+          <p className="text-xs sm:text-sm md:text-base font-semibold text-slate-900 dark:text-slate-100 leading-tight">
+            Philippine Statistics Authority Misamis Oriental Integrated Operations Monitoring System
+          </p>
         </div>
         <div className="flex items-center gap-4">
           {user ? (

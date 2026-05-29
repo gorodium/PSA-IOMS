@@ -2,6 +2,7 @@ import "server-only";
 
 import bcrypt from "bcryptjs";
 import { createHmac, timingSafeEqual } from "crypto";
+import { cache } from "react";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
@@ -18,9 +19,13 @@ type SessionPayload = {
 export type AuthUser = {
   id: string;
   name: string;
-  email: string;
+  username: string;
+  email: string | null;
   role: UserRole;
   personnelId: string | null;
+  employeeId: string | null;
+  section: string | null;
+  mustChangePassword: boolean;
   isActive: boolean;
   personnel: {
     id: string;
@@ -124,7 +129,7 @@ export async function clearUserSession() {
   cookieStore.delete(sessionCookieName);
 }
 
-export async function getCurrentUser(): Promise<AuthUser | null> {
+export const getCurrentUser = cache(async (): Promise<AuthUser | null> => {
   const cookieStore = await cookies();
   const session = verifySessionToken(cookieStore.get(sessionCookieName)?.value);
 
@@ -139,9 +144,13 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
     select: {
       id: true,
       name: true,
+      username: true,
       email: true,
       role: true,
       personnelId: true,
+      employeeId: true,
+      section: true,
+      mustChangePassword: true,
       isActive: true,
       personnel: {
         select: {
@@ -154,17 +163,57 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
   });
 
   if (!user?.isActive) {
-  return null;
-}
+    return null;
+  }
 
   return user;
-}
+});
 
 export async function requireUser() {
   const user = await getCurrentUser();
 
   if (!user) {
     redirect("/login");
+  }
+  
+  if (user.mustChangePassword) {
+    // Prevent infinite redirect loop if we are already on change password page
+    // This requires the caller to handle mustChangePassword, or we can just redirect.
+    // For now, we will return the user and let middleware or layout handle it,
+    // OR we can redirect here if not explicitly bypassed.
+  }
+
+  return user;
+}
+
+export async function requireSuperAdmin() {
+  const user = await requireUser();
+  if (user.role !== "SUPER_ADMIN") {
+    throw new Error("You do not have permission to perform this action.");
+  }
+  return user;
+}
+
+export async function requireProjectPermission(projectId: string, permissionType: import("@/lib/permissions").ProjectPermissionType) {
+  const user = await requireUser();
+  
+  if (user.role === "SUPER_ADMIN") {
+    return user;
+  }
+
+  const permission = await db.projectPermission.findUnique({
+    where: {
+      projectId_userId: {
+        projectId,
+        userId: user.id
+      }
+    }
+  });
+
+  const { checkProjectPermission } = await import("@/lib/permissions");
+  
+  if (!checkProjectPermission(user, permission, permissionType)) {
+    throw new Error(`You do not have permission to ${permissionType.replace("can", "").toLowerCase()} this project.`);
   }
 
   return user;

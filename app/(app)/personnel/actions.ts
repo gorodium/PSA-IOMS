@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
 import { writeAuditLog } from "@/lib/audit";
@@ -26,7 +27,12 @@ function personnelInputFromFormData(formData: FormData) {
     section: formData.get("section"),
     email: formData.get("email"),
     contactNo: formData.get("contactNo"),
-    isActive: formData.get("isActive") ?? "false"
+    isActive: formData.get("isActive") ?? "false",
+    locationStatus: formData.get("locationStatus") ?? "office",
+    travelDetails: formData.get("travelDetails"),
+    travelDestination: formData.get("travelDestination"),
+    travelStartDate: formData.get("travelStartDate"),
+    travelEndDate: formData.get("travelEndDate")
   };
 }
 
@@ -39,7 +45,10 @@ export async function createPersonnelAction(formData: FormData) {
   }
 
   const personnel = await db.personnel.create({
-    data: parsed.data
+    data: {
+      ...parsed.data,
+      slug: parsed.data.fullName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '')
+    }
   });
 
   await writeAuditLog({
@@ -82,7 +91,13 @@ export async function updatePersonnelAction(formData: FormData) {
       section: parsed.data.section,
       email: parsed.data.email,
       contactNo: parsed.data.contactNo,
-      isActive: parsed.data.isActive
+      isActive: parsed.data.isActive,
+      locationStatus: parsed.data.locationStatus,
+      travelDetails: parsed.data.travelDetails,
+      travelDestination: parsed.data.travelDestination,
+      travelStartDate: parsed.data.travelStartDate,
+      travelEndDate: parsed.data.travelEndDate,
+      slug: parsed.data.fullName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '')
     }
   });
 
@@ -96,4 +111,77 @@ export async function updatePersonnelAction(formData: FormData) {
   });
 
   revalidatePath("/personnel");
+}
+
+export async function softDeletePersonnelAction(formData: FormData) {
+  const user = await requirePermission("manage", "personnel");
+  
+  const personnelId = formData.get("id") as string;
+  const archiveReason = formData.get("archiveReason") as string | null;
+  const archiveDateString = formData.get("archiveDate") as string | null;
+  const archiveDate = archiveDateString ? new Date(archiveDateString) : null;
+
+  if (!personnelId) {
+    throw new Error("Personnel ID is missing.");
+  }
+
+  const oldPersonnel = await db.personnel.findUnique({
+    where: { id: personnelId }
+  });
+
+  if (!oldPersonnel) {
+    throw new Error("Personnel record was not found.");
+  }
+
+  const personnel = await db.personnel.update({
+    where: { id: personnelId },
+    data: { 
+      isActive: false,
+      archiveReason,
+      archiveDate
+    }
+  });
+
+  await writeAuditLog({
+    userId: user.id,
+    action: "SOFT_DELETE",
+    entityType: "Personnel",
+    entityId: personnelId,
+    oldValueJson: oldPersonnel,
+    newValueJson: personnel
+  });
+
+  revalidatePath("/personnel");
+  redirect("/personnel");
+}
+
+export async function hardDeletePersonnelAction(personnelId: string) {
+  const user = await requirePermission("manage", "personnel");
+
+  if (user.role !== "SUPER_ADMIN") {
+    throw new Error("Only Super Admin can permanently delete records.");
+  }
+
+  const oldPersonnel = await db.personnel.findUnique({
+    where: { id: personnelId }
+  });
+
+  if (!oldPersonnel) {
+    throw new Error("Personnel record was not found.");
+  }
+
+  await db.personnel.delete({
+    where: { id: personnelId }
+  });
+
+  await writeAuditLog({
+    userId: user.id,
+    action: "HARD_DELETE",
+    entityType: "Personnel",
+    entityId: personnelId,
+    oldValueJson: oldPersonnel
+  });
+
+  revalidatePath("/personnel");
+  redirect("/personnel");
 }

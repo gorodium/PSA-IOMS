@@ -9,6 +9,7 @@ import {
 
 type ProjectPersonnelSummary = {
   isFocalPerson: boolean;
+  roleInProject: string;
   personnel: {
     fullName: string;
   };
@@ -17,6 +18,10 @@ type ProjectPersonnelSummary = {
 export type MonitoringTask = StatusInput & {
   id: string;
   taskName: string;
+  remarks?: string | null;
+  totalSamplesDocuments?: number | null;
+  responseRate?: number | null;
+  manualStatusOverride?: string | null;
   updatedAt: Date;
   assignedPersonnel?: {
     fullName: string;
@@ -26,14 +31,20 @@ export type MonitoringTask = StatusInput & {
 export type MonitoringCycle = StatusInput & {
   id: string;
   cycleName: string;
+  startDate?: Date | null;
+  createdAt?: Date;
+  totalSamplesDocuments?: number | null;
+  responseRate?: number | null;
   updatedAt: Date;
   tasks: MonitoringTask[];
 };
 
 export type MonitoringProject = {
   id: string;
+  slug: string;
   name: string;
   category: string;
+  frequency: string;
   year: number;
   status: string;
   isActive: boolean;
@@ -47,6 +58,10 @@ const attentionStatuses: MonitoringStatus[] = ["OVERDUE", "DUE_TODAY", "DUE_SOON
 export function deriveProjectStatus(project: MonitoringProject, today: Date): MonitoringStatus {
   if (!project.isActive) {
     return "INACTIVE";
+  }
+
+  if (project.status === "COMPLETED") {
+    return "COMPLETED";
   }
 
   if (project.cycles.length === 0) {
@@ -94,8 +109,35 @@ export function getFocalPersonNames(project: MonitoringProject) {
 }
 
 export function getResponsiblePersonnelNames(project: MonitoringProject) {
-  const names = project.personnel.map((item) => item.personnel.fullName);
-  return names.length > 0 ? names.join(", ") : "Unassigned";
+  const names = project.personnel.filter((item) => !item.isFocalPerson).map((item) => item.personnel.fullName);
+  return names.length > 0 ? names.join(", ") : "None";
+}
+
+export function getGroupedPersonnel(project: MonitoringProject) {
+  const groups: Record<string, string[]> = {};
+  
+  project.personnel.forEach(item => {
+    if (item.isFocalPerson) return;
+    
+    let role = "Other Employee(s) Involved";
+    const lowerRole = item.roleInProject?.toLowerCase() || "";
+    
+    if (lowerRole.includes("alternate")) {
+      role = "Alternate Focal Person";
+    } else if (lowerRole.includes("assistant")) {
+      role = "Assistant Focal Person";
+    }
+    
+    if (!groups[role]) {
+      groups[role] = [];
+    }
+    groups[role].push(item.personnel.fullName);
+  });
+  
+  return Object.entries(groups).map(([role, names]) => ({
+    role,
+    names: names.join(", ")
+  }));
 }
 
 export function getNearestDeadline(project: MonitoringProject) {

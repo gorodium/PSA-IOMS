@@ -12,11 +12,20 @@ export async function canEditProject(user: AuthUser | null, projectId: string) {
     return true;
   }
 
-  if (user.role !== "ADMIN") {
-    return false;
+  if (user.personnelId) {
+    const isAssigned = await db.projectPersonnel.findFirst({
+      where: {
+        projectId,
+        personnelId: user.personnelId
+      }
+    });
+    
+    if (isAssigned) {
+      return true;
+    }
   }
 
-  const assignment = await db.projectEditor.findUnique({
+  const permission = await db.projectPermission.findUnique({
     where: {
       projectId_userId: {
         projectId,
@@ -25,5 +34,47 @@ export async function canEditProject(user: AuthUser | null, projectId: string) {
     }
   });
 
-  return Boolean(assignment);
+  return Boolean(permission && (permission.canEdit || permission.canManage));
+}
+
+export async function canManageProject(user: AuthUser | null, projectId: string) {
+  if (!user?.isActive) {
+    return false;
+  }
+
+  if (user.role === "SUPER_ADMIN") {
+    return true;
+  }
+
+  const permission = await db.projectPermission.findUnique({
+    where: {
+      projectId_userId: {
+        projectId,
+        userId: user.id
+      }
+    }
+  });
+
+  return Boolean(permission && permission.canManage);
+}
+
+export async function canViewProject(user: AuthUser | null, projectId: string) {
+  if (!user?.isActive) {
+    return false;
+  }
+
+  if (user.role === "SUPER_ADMIN" || user.role === "ADMIN" || user.role === "SUPERVISOR") {
+    return true;
+  }
+
+  const permission = await db.projectPermission.findUnique({
+    where: {
+      projectId_userId: {
+        projectId,
+        userId: user.id
+      }
+    }
+  });
+
+  return Boolean(permission && (permission.canView || permission.canEdit || permission.canManage));
 }

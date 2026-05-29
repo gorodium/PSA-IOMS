@@ -1,14 +1,16 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  experimental: {
+    serverActions: {
+      bodySizeLimit: "25mb"
+    },
+    middlewareClientMaxBodySize: "25mb"
+  },
   turbopack: {
     root: process.cwd()
   },
-  experimental: {
-    serverActions: {
-      bodySizeLimit: "2mb"
-    }
-  }
+  serverExternalPackages: ["pdfjs-dist", "canvas"]
 };
 
 export default nextConfig;

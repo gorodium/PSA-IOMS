@@ -14,6 +14,7 @@ export type StatusInput = {
   dateSubmitted?: Date | string | null;
   progress?: number | null;
   isActive?: boolean | null;
+  manualStatusOverride?: string | null;
 };
 
 function toDate(value: Date | string | null | undefined) {
@@ -46,6 +47,10 @@ function isAfterWindow(deadline: Date, today: Date) {
 }
 
 export function calculateTaskStatus(task: StatusInput, today: Date): MonitoringStatus {
+  if (task.manualStatusOverride) {
+    return task.manualStatusOverride as MonitoringStatus;
+  }
+
   if (task.isActive === false) {
     return "INACTIVE";
   }

@@ -76,7 +76,7 @@ export default async function AdminPage() {
         </CardHeader>
         <CardContent className="grid gap-2 text-sm text-muted-foreground sm:grid-cols-2">
           <p>Vehicle scheduling is not included.</p>
-          <p>Convocation assignment is not included.</p>
+          <p>Convocation Program assignments are managed from the Convocation Program module.</p>
           <p>Full Gantt charts are not included.</p>
           <p>PDF export and email notifications are not included.</p>
         </CardContent>

@@ -23,11 +23,15 @@ enum ProjectCategory {
 }
 
 enum ProjectFrequency {
+  DAILY
+  WEEKLY
+  BI_WEEKLY
   MONTHLY
   QUARTERLY
   SEMI_ANNUAL
   ANNUAL
   AD_HOC
+  CUSTOM
 }
 
 enum ProjectPriority {
@@ -57,84 +61,189 @@ enum TaskStatus {
   INACTIVE
 }
 
+enum ActivityType {
+  EVENT
+  TRAVEL
+  VEHICLE
+  HOLIDAY
+  ROOM
+}
+
+enum VehicleRequestStatus {
+  PENDING
+  APPROVED
+  ASSIGNED
+  REJECTED
+  CANCELLED
+}
+
+enum RoomReservationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+enum RoomReservationType {
+  HALF_DAY
+  MULTIPLE_DAYS
+}
+
+enum HalfDaySlot {
+  MORNING
+  AFTERNOON
+}
+
+enum ConvocationProgramStatus {
+  DRAFT
+  FINALIZED
+  ARCHIVED
+}
+
+enum ConvocationAssignmentMode {
+  FIXED
+  CUSTOM
+  ASSIGNABLE
+  OVERRIDDEN
+  MIRRORED
+}
+
+enum ChatChannelType {
+  GENERAL
+  PRIVATE
+  SYSTEM
+  ADMIN_REQUESTS
+}
+
+enum ChatChannelMemberRole {
+  MEMBER
+  ADMIN
+  OWNER
+}
+
+enum ChatMessageType {
+  USER_MESSAGE
+  SYSTEM_MESSAGE
+  REQUEST_NOTIFICATION
+  REQUEST_STATUS_UPDATE
+}
+
 model User {
-  id              String          @id @default(cuid())
-  name            String
-  email           String          @unique
-  passwordHash    String
-  role            UserRole        @default(VIEWER)
-  personnelId     String?         @unique
-  personnel       Personnel?      @relation(fields: [personnelId], references: [id], onDelete: SetNull)
-  isActive        Boolean         @default(true)
-  lastLoginAt     DateTime?
-  createdAt       DateTime        @default(now())
-  updatedAt       DateTime        @updatedAt
-  createdProjects Project[]       @relation("ProjectCreatedBy")
-  updatedProjects Project[]       @relation("ProjectUpdatedBy")
-  editableProjects ProjectEditor[]
-  remarks         ProjectRemark[]
-  auditLogs       AuditLog[]
+  id                       String               @id @default(cuid())
+  name                     String
+  username                 String               @unique
+  email                    String?              @unique
+  mustChangePassword       Boolean              @default(true)
+  passwordHash             String
+  role                     UserRole             @default(VIEWER)
+  personnelId              String?              @unique
+  personnel                Personnel?           @relation(fields: [personnelId], references: [id], onDelete: SetNull)
+  employeeId               String?
+  section                  String?
+  isActive                 Boolean              @default(true)
+  lastLoginAt              DateTime?
+  createdAt                DateTime             @default(now())
+  updatedAt                DateTime             @updatedAt
+  createdProjects          Project[]            @relation("ProjectCreatedBy")
+  updatedProjects          Project[]            @relation("ProjectUpdatedBy")
+  projectPermissions       ProjectPermission[]
+  assignedPermissions      ProjectPermission[]  @relation("ProjectPermissionAssignedBy")
+  resetTokens              PasswordResetToken[]
+  remarks                  ProjectRemark[]
+  auditLogs                AuditLog[]
+  createdVehicleRequests   VehicleRequest[]     @relation("VehicleRequestsCreatedBy")
+  reviewedVehicleRequests  VehicleRequest[]     @relation("VehicleRequestsReviewedBy")
+  createdRoomReservations  RoomReservation[]    @relation("RoomReservationsCreatedBy")
+  approvedRoomReservations RoomReservation[]    @relation("RoomReservationsApprovedBy")
+  rejectedRoomReservations RoomReservation[]    @relation("RoomReservationsRejectedBy")
+  generatedConvocations    ConvocationProgram[] @relation("ConvocationGeneratedBy")
+  finalizedConvocations    ConvocationProgram[] @relation("ConvocationFinalizedBy")
+  createdChatChannels      ChatChannel[]        @relation("ChatChannelCreatedBy")
+  chatChannelMemberships   ChatChannelMember[]
+  sentChatMessages         ChatMessage[]        @relation("ChatMessageSender")
+  chatMessageReads         ChatMessageRead[]
+  createdPdfTemplates      PdfTemplate[]        @relation("PdfTemplateCreatedBy")
 
   @@index([role])
   @@index([isActive])
 }
 
 model Personnel {
-  id                 String             @id @default(cuid())
-  employeeNo         String?            @unique
-  fullName           String
-  position           String
-  section            String
-  email              String?            @unique
-  contactNo          String?
-  isActive           Boolean            @default(true)
-  createdAt          DateTime           @default(now())
-  updatedAt          DateTime           @updatedAt
-  users              User[]
-  projectAssignments ProjectPersonnel[]
-  assignedTasks      ProjectTask[]
+  id                       String                         @id @default(cuid())
+  slug                     String                         @unique
+  employeeNo               String?                        @unique
+  fullName                 String
+  position                 String
+  section                  String
+  email                    String?                        @unique
+  contactNo                String?
+  isActive                 Boolean                        @default(true)
+  archiveReason            String?
+  archiveDate              DateTime?
+  locationStatus           String                         @default("office") // "office" or "on_travel"
+  travelDetails            String?
+  travelDestination        String?
+  travelStartDate          DateTime?
+  travelEndDate            DateTime?
+  createdAt                DateTime                       @default(now())
+  updatedAt                DateTime                       @updatedAt
+  users                    User[]
+  projectAssignments       ProjectPersonnel[]
+  assignedTasks            ProjectTask[]
+  activities               CalendarActivity[]
+  involvedActivities       CalendarActivity[]             @relation("ActivityInvolvedPersonnel")
+  vehicleRequests          VehicleRequest[]               @relation("VehicleRequestRequester")
+  vehicleRequestPassengers VehicleRequestPassenger[]      @relation("VehicleRequestPassengerPersonnel")
+  roomReservations         RoomReservation[]              @relation("RoomReservationRequester")
+  convocationGroupMembers  ConvocationGroupMember[]
+  convocationAssignments   ConvocationProgramItem[]       @relation("ConvocationItemAssignee")
+  convocationHistory       ConvocationAssignmentHistory[]
 
   @@index([section])
   @@index([isActive])
 }
 
 model Project {
-  id                String             @id @default(cuid())
-  name              String
-  code              String?            @unique
-  description       String?
-  category          ProjectCategory
-  subcategory       String?
-  section           String?
-  year              Int
-  frequency         ProjectFrequency
-  priority          ProjectPriority    @default(MEDIUM)
-  workloadWeight    Float              @default(1)
-  estimatedMandays  Float              @default(0)
-  status            ProjectStatus      @default(ON_TRACK)
-  uiLayout          String             @default("BALANCED")
-  showOperationWorkload Boolean        @default(true)
-  showDeadlineSubmission Boolean       @default(true)
-  showDateSubmitted Boolean            @default(true)
-  showTotalSamplesDocuments Boolean    @default(true)
-  showResponseRate Boolean             @default(true)
-  operationWorkloadLabel String        @default("Project/Operation/Workload")
-  deadlineSubmissionLabel String       @default("Deadline of Submission")
-  dateSubmittedLabel String            @default("Date Submitted")
-  totalSamplesDocumentsLabel String    @default("Total Sample/Documents")
-  responseRateLabel String             @default("Response Rate")
-  customTaskColumns Json?
-  isActive          Boolean            @default(true)
-  createdById       String?
-  updatedById       String?
-  createdBy         User?              @relation("ProjectCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
-  updatedBy         User?              @relation("ProjectUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
-  personnel         ProjectPersonnel[]
-  editors           ProjectEditor[]
-  cycles            ProjectCycle[]
-  remarks           ProjectRemark[]
-  createdAt         DateTime           @default(now())
-  updatedAt         DateTime           @updatedAt
+  id                         String              @id @default(cuid())
+  name                       String
+  slug                       String              @unique @default(cuid())
+  code                       String?             @unique
+  description                String?
+  category                   ProjectCategory
+  subcategory                String?
+  section                    String?
+  year                       Int
+  frequency                  ProjectFrequency
+  customFrequency            String?
+  priority                   ProjectPriority     @default(MEDIUM)
+  workloadWeight             Float               @default(1)
+  estimatedMandays           Float               @default(0)
+  status                     ProjectStatus       @default(ON_TRACK)
+  uiLayout                   String              @default("BALANCED")
+  showDescription            Boolean             @default(true)
+  showOperationWorkload      Boolean             @default(true)
+  showDeadlineSubmission     Boolean             @default(true)
+  showDateSubmitted          Boolean             @default(true)
+  showTotalSamplesDocuments  Boolean             @default(true)
+  showResponseRate           Boolean             @default(true)
+  operationWorkloadLabel     String              @default("Project/Operation/Workload")
+  deadlineSubmissionLabel    String              @default("Deadline of Submission")
+  dateSubmittedLabel         String              @default("Date Submitted")
+  totalSamplesDocumentsLabel String              @default("Total Sample/Documents")
+  responseRateLabel          String              @default("Response Rate")
+  customTaskColumns          Json?
+  canvasLayout               Json?
+  isActive                   Boolean             @default(true)
+  createdById                String?
+  updatedById                String?
+  createdBy                  User?               @relation("ProjectCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  updatedBy                  User?               @relation("ProjectUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+  personnel                  ProjectPersonnel[]
+  permissions                ProjectPermission[]
+  cycles                     ProjectCycle[]
+  remarks                    ProjectRemark[]
+  createdAt                  DateTime            @default(now())
+  updatedAt                  DateTime            @updatedAt
 
   @@index([status])
   @@index([category])
@@ -142,29 +251,50 @@ model Project {
   @@index([isActive])
 }
 
-model ProjectEditor {
-  id        String   @id @default(cuid())
-  projectId String
-  userId    String
-  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+model ProjectPermission {
+  id           String   @id @default(cuid())
+  projectId    String
+  userId       String
+  canView      Boolean  @default(true)
+  canEdit      Boolean  @default(false)
+  canSubmit    Boolean  @default(false)
+  canApprove   Boolean  @default(false)
+  canManage    Boolean  @default(false)
+  assignedById String?
+  project      Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  assignedBy   User?    @relation("ProjectPermissionAssignedBy", fields: [assignedById], references: [id], onDelete: SetNull)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   @@unique([projectId, userId])
   @@index([userId])
 }
 
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([tokenHash])
+}
+
 model ProjectPersonnel {
-  id             String    @id @default(cuid())
-  projectId      String
-  personnelId    String
-  roleInProject  String
-  isFocalPerson  Boolean   @default(false)
-  project        Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  personnel      Personnel @relation(fields: [personnelId], references: [id], onDelete: Cascade)
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
+  id            String    @id @default(cuid())
+  projectId     String
+  personnelId   String
+  roleInProject String
+  isFocalPerson Boolean   @default(false)
+  project       Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  personnel     Personnel @relation(fields: [personnelId], references: [id], onDelete: Cascade)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 
   @@unique([projectId, personnelId])
   @@index([personnelId])
@@ -193,10 +323,10 @@ model ProjectCycle {
   createdAt             DateTime        @default(now())
   updatedAt             DateTime        @updatedAt
 
+  @@unique([projectId, cycleName, year])
   @@index([projectId])
   @@index([status])
   @@index([deadline])
-  @@unique([projectId, cycleName, year])
 }
 
 model ProjectTask {
@@ -212,7 +342,10 @@ model ProjectTask {
   responseRate          Float?
   totalSamplesDocuments Int?
   customValues          Json?
+  manualStatusOverride  String?
   remarks               String?
+  isSubtitle            Boolean         @default(false)
+  order                 Int             @default(0)
   isActive              Boolean         @default(true)
   projectCycle          ProjectCycle    @relation(fields: [projectCycleId], references: [id], onDelete: Cascade)
   assignedPersonnel     Personnel?      @relation(fields: [assignedPersonnelId], references: [id], onDelete: SetNull)
@@ -220,11 +353,11 @@ model ProjectTask {
   createdAt             DateTime        @default(now())
   updatedAt             DateTime        @updatedAt
 
+  @@unique([projectCycleId, taskName])
   @@index([projectCycleId])
   @@index([assignedPersonnelId])
   @@index([status])
   @@index([deadline])
-  @@unique([projectCycleId, taskName])
 }
 
 model ProjectRemark {
@@ -263,4 +396,371 @@ model AuditLog {
   @@index([entityType, entityId])
   @@index([userId])
   @@index([createdAt])
+}
+
+model CanvasTemplate {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  layout    Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model CalendarActivity {
+  id                  String               @id @default(cuid())
+  type                ActivityType
+  title               String
+  soNumber            String?
+  soFileUrl           String?
+  description         String?
+  startDate           DateTime
+  endDate             DateTime?
+  location            String?
+  personnelId         String?
+  vehicleName         String?
+  personnel           Personnel?           @relation(fields: [personnelId], references: [id], onDelete: SetNull)
+  involvedPersonnel   Personnel[]          @relation("ActivityInvolvedPersonnel")
+  vehicleRequests     VehicleRequest[]
+  roomReservations    RoomReservation[]
+  convocationPrograms ConvocationProgram[]
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+
+  @@index([type])
+  @@index([startDate])
+}
+
+model Vehicle {
+  id          String           @id @default(cuid())
+  name        String
+  plateNumber String?          @unique
+  description String?
+  isActive    Boolean          @default(true)
+  requests    VehicleRequest[]
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  @@index([isActive])
+}
+
+model VehicleRequest {
+  id                   String                    @id @default(cuid())
+  requesterPersonnelId String
+  requestedByUserId    String?
+  travelDate           DateTime
+  departureAt          DateTime?
+  expectedReturnAt     DateTime?
+  purpose              String
+  destination          String
+  status               VehicleRequestStatus      @default(PENDING)
+  assignedVehicleId    String?
+  soNumber             String?
+  soFileUrl            String?
+  adminNotes           String?
+  rejectionReason      String?
+  reviewedById         String?
+  calendarActivityId   String?
+  requester            Personnel                 @relation("VehicleRequestRequester", fields: [requesterPersonnelId], references: [id], onDelete: Restrict)
+  requestedBy          User?                     @relation("VehicleRequestsCreatedBy", fields: [requestedByUserId], references: [id], onDelete: SetNull)
+  reviewedBy           User?                     @relation("VehicleRequestsReviewedBy", fields: [reviewedById], references: [id], onDelete: SetNull)
+  assignedVehicle      Vehicle?                  @relation(fields: [assignedVehicleId], references: [id], onDelete: SetNull)
+  calendarActivity     CalendarActivity?         @relation(fields: [calendarActivityId], references: [id], onDelete: SetNull)
+  passengers           VehicleRequestPassenger[]
+  createdAt            DateTime                  @default(now())
+  updatedAt            DateTime                  @updatedAt
+
+  @@index([requesterPersonnelId])
+  @@index([requestedByUserId])
+  @@index([assignedVehicleId])
+  @@index([travelDate])
+  @@index([status])
+}
+
+model VehicleRequestPassenger {
+  id          String         @id @default(cuid())
+  requestId   String
+  personnelId String
+  request     VehicleRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  personnel   Personnel      @relation("VehicleRequestPassengerPersonnel", fields: [personnelId], references: [id], onDelete: Restrict)
+  createdAt   DateTime       @default(now())
+
+  @@unique([requestId, personnelId])
+  @@index([personnelId])
+}
+
+model Room {
+  id                String            @id @default(cuid())
+  name              String            @unique
+  isAvailable       Boolean           @default(true)
+  unavailableReason String?
+  isActive          Boolean           @default(true)
+  reservations      RoomReservation[]
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  @@index([isAvailable])
+  @@index([isActive])
+}
+
+model RoomReservation {
+  id                   String                @id @default(cuid())
+  roomId               String
+  requesterPersonnelId String
+  requestedByUserId    String?
+  reservationType      RoomReservationType
+  startDate            DateTime
+  endDate              DateTime
+  halfDaySlot          HalfDaySlot?
+  purpose              String
+  remarks              String?
+  status               RoomReservationStatus @default(PENDING)
+  approvedById         String?
+  approvedAt           DateTime?
+  rejectedById         String?
+  rejectedAt           DateTime?
+  rejectionReason      String?
+  cancelledAt          DateTime?
+  calendarActivityId   String?
+  room                 Room                  @relation(fields: [roomId], references: [id], onDelete: Restrict)
+  requester            Personnel             @relation("RoomReservationRequester", fields: [requesterPersonnelId], references: [id], onDelete: Restrict)
+  requestedBy          User?                 @relation("RoomReservationsCreatedBy", fields: [requestedByUserId], references: [id], onDelete: SetNull)
+  approvedBy           User?                 @relation("RoomReservationsApprovedBy", fields: [approvedById], references: [id], onDelete: SetNull)
+  rejectedBy           User?                 @relation("RoomReservationsRejectedBy", fields: [rejectedById], references: [id], onDelete: SetNull)
+  calendarActivity     CalendarActivity?     @relation(fields: [calendarActivityId], references: [id], onDelete: SetNull)
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
+
+  @@index([roomId])
+  @@index([requesterPersonnelId])
+  @@index([requestedByUserId])
+  @@index([status])
+  @@index([startDate])
+  @@index([endDate])
+}
+
+model ConvocationGroup {
+  id        String                         @id @default(cuid())
+  name      String                         @unique
+  sortOrder Int
+  isActive  Boolean                        @default(true)
+  members   ConvocationGroupMember[]
+  programs  ConvocationProgram[]
+  history   ConvocationAssignmentHistory[]
+  createdAt DateTime                       @default(now())
+  updatedAt DateTime                       @updatedAt
+
+  @@index([sortOrder])
+  @@index([isActive])
+}
+
+model ConvocationGroupMember {
+  id                String           @id @default(cuid())
+  groupId           String
+  personnelId       String
+  isTechnicalPerson Boolean          @default(false)
+  isGroupLead       Boolean          @default(false)
+  isAvailable       Boolean          @default(true)
+  isActive          Boolean          @default(true)
+  group             ConvocationGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  personnel         Personnel        @relation(fields: [personnelId], references: [id], onDelete: Restrict)
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  @@unique([groupId, personnelId])
+  @@index([personnelId])
+  @@index([isAvailable])
+  @@index([isActive])
+}
+
+model ConvocationTemplateItem {
+  id              String                    @id @default(cuid())
+  itemKey         String                    @unique
+  itemLabel       String
+  itemOrder       Int
+  defaultMode     ConvocationAssignmentMode
+  fixedTextValue  String?
+  isEnabled       Boolean                   @default(true)
+  rotationKey     String?
+  mirrorOfItemKey String?
+  createdAt       DateTime                  @default(now())
+  updatedAt       DateTime                  @updatedAt
+
+  @@index([itemOrder])
+  @@index([isEnabled])
+}
+
+model ConvocationProgram {
+  id                 String                         @id @default(cuid())
+  convocationDate    DateTime                       @unique
+  groupId            String
+  status             ConvocationProgramStatus       @default(DRAFT)
+  generatedById      String?
+  finalizedById      String?
+  finalizedAt        DateTime?
+  printedAt          DateTime?
+  notes              String?
+  calendarActivityId String?
+  group              ConvocationGroup               @relation(fields: [groupId], references: [id], onDelete: Restrict)
+  generatedBy        User?                          @relation("ConvocationGeneratedBy", fields: [generatedById], references: [id], onDelete: SetNull)
+  finalizedBy        User?                          @relation("ConvocationFinalizedBy", fields: [finalizedById], references: [id], onDelete: SetNull)
+  calendarActivity   CalendarActivity?              @relation(fields: [calendarActivityId], references: [id], onDelete: SetNull)
+  items              ConvocationProgramItem[]
+  history            ConvocationAssignmentHistory[]
+  createdAt          DateTime                       @default(now())
+  updatedAt          DateTime                       @updatedAt
+
+  @@index([groupId])
+  @@index([status])
+  @@index([convocationDate])
+}
+
+model ConvocationProgramItem {
+  id                   String                    @id @default(cuid())
+  programId            String
+  itemKey              String
+  itemLabel            String
+  itemOrder            Int
+  assignmentMode       ConvocationAssignmentMode
+  assignedPersonnelId  String?
+  suggestedPersonnelId String?
+  fixedTextValue       String?
+  isEnabled            Boolean                   @default(true)
+  rotationKey          String?
+  mirrorOfItemKey      String?
+  countInRotation      Boolean                   @default(false)
+  overrideReason       String?
+  program              ConvocationProgram        @relation(fields: [programId], references: [id], onDelete: Cascade)
+  assignedPersonnel    Personnel?                @relation("ConvocationItemAssignee", fields: [assignedPersonnelId], references: [id], onDelete: SetNull)
+  createdAt            DateTime                  @default(now())
+  updatedAt            DateTime                  @updatedAt
+
+  @@unique([programId, itemKey])
+  @@index([assignedPersonnelId])
+  @@index([itemOrder])
+}
+
+model ConvocationAssignmentHistory {
+  id                String             @id @default(cuid())
+  programId         String
+  groupId           String
+  personnelId       String
+  itemKey           String
+  rotationKey       String
+  convocationDate   DateTime
+  wasOverride       Boolean            @default(false)
+  countedInRotation Boolean            @default(true)
+  program           ConvocationProgram @relation(fields: [programId], references: [id], onDelete: Cascade)
+  group             ConvocationGroup   @relation(fields: [groupId], references: [id], onDelete: Restrict)
+  personnel         Personnel          @relation(fields: [personnelId], references: [id], onDelete: Restrict)
+  createdAt         DateTime           @default(now())
+
+  @@unique([programId, rotationKey])
+  @@index([groupId, rotationKey])
+  @@index([personnelId])
+  @@index([convocationDate])
+}
+
+model ChatChannel {
+  id          String              @id @default(cuid())
+  name        String
+  description String?
+  channelType ChatChannelType     @default(GENERAL)
+  createdById String?
+  createdBy   User?               @relation("ChatChannelCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  isActive    Boolean             @default(true)
+  members     ChatChannelMember[]
+  messages    ChatMessage[]
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+
+  @@unique([name, channelType])
+  @@index([channelType])
+  @@index([isActive])
+}
+
+model ChatChannelMember {
+  id        String                @id @default(cuid())
+  channelId String
+  userId    String
+  role      ChatChannelMemberRole @default(MEMBER)
+  isActive  Boolean               @default(true)
+  joinedAt  DateTime              @default(now())
+  channel   ChatChannel           @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  user      User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([channelId, userId])
+  @@index([userId])
+  @@index([isActive])
+}
+
+model ChatMessage {
+  id                String            @id @default(cuid())
+  channelId         String
+  senderUserId      String?
+  messageType       ChatMessageType   @default(USER_MESSAGE)
+  body              String
+  relatedEntityType String?
+  relatedEntityId   String?
+  metadataJson      Json?
+  deletedAt         DateTime?
+  channel           ChatChannel       @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  sender            User?             @relation("ChatMessageSender", fields: [senderUserId], references: [id], onDelete: SetNull)
+  reads             ChatMessageRead[]
+  attachments       ChatAttachment[]
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  @@index([channelId, createdAt])
+  @@index([senderUserId])
+  @@index([messageType])
+  @@index([relatedEntityType, relatedEntityId])
+  @@index([deletedAt])
+}
+
+model ChatAttachment {
+  id        String      @id @default(cuid())
+  messageId String
+  fileName  String
+  fileUrl   String
+  mimeType  String
+  fileSize  Int
+  message   ChatMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  createdAt DateTime    @default(now())
+
+  @@index([messageId])
+  @@index([mimeType])
+}
+
+model ChatMessageRead {
+  id        String      @id @default(cuid())
+  messageId String
+  userId    String
+  readAt    DateTime    @default(now())
+  message   ChatMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, userId])
+  @@index([userId])
+  @@index([readAt])
+}
+
+model PdfTemplate {
+  id              String   @id @default(cuid())
+  name            String
+  description     String?
+  templateFeature String   @default("GENERAL")
+  fileName        String
+  fileUrl         String
+  pageCount       Int      @default(1)
+  fieldMap        Json?
+  isDefault       Boolean  @default(false)
+  isActive        Boolean  @default(true)
+  createdById     String?
+  createdBy       User?    @relation("PdfTemplateCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([isActive])
+  @@index([templateFeature])
+  @@index([createdById])
 }

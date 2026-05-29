@@ -1,0 +1,1 @@
+ALTER TYPE "ConvocationAssignmentMode" ADD VALUE IF NOT EXISTS 'CUSTOM';

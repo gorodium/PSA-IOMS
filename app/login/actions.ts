@@ -23,28 +23,31 @@ function getSafeNextPath(value: FormDataEntryValue | null) {
 export async function loginAction(formData: FormData) {
   const nextPath = getSafeNextPath(formData.get("next"));
   const parsed = loginSchema.safeParse({
-    email: formData.get("email"),
+    identifier: formData.get("identifier") ?? formData.get("email"),
     password: formData.get("password")
   });
 
   if (!parsed.success) {
-    loginRedirect(parsed.error.issues[0]?.message ?? "Check your email and password.", nextPath);
+    loginRedirect(parsed.error.issues[0]?.message ?? "Check your username/email and password.", nextPath);
   }
 
-  const user = await db.user.findUnique({
+  const user = await db.user.findFirst({
     where: {
-      email: parsed.data.email
+      OR: [
+        { email: parsed.data.identifier },
+        { username: parsed.data.identifier }
+      ]
     }
   });
 
   if (!user?.isActive) {
-    loginRedirect("Invalid email or password.", nextPath);
+    loginRedirect("Invalid username/email or password.", nextPath);
   }
 
   const isValidPassword = await comparePasswords(parsed.data.password, user.passwordHash);
 
   if (!isValidPassword) {
-    loginRedirect("Invalid email or password.", nextPath);
+    loginRedirect("Invalid username/email or password.", nextPath);
   }
 
   await db.user.update({
@@ -63,6 +66,10 @@ export async function loginAction(formData: FormData) {
     entityType: "User",
     entityId: user.id
   });
+
+  if (user.mustChangePassword) {
+    redirect(`/change-password?next=${encodeURIComponent(nextPath)}`);
+  }
 
   redirect(nextPath);
 }
