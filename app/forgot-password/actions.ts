@@ -44,6 +44,33 @@ export async function forgotPasswordAction(formData: FormData) {
       entityType: "User",
       entityId: user.id
     });
+
+    // Notify admins via chat
+    const adminChannel = await db.chatChannel.findFirst({
+      where: { channelType: "ADMIN_REQUESTS", isActive: true }
+    });
+
+    if (adminChannel) {
+      await db.chatMessage.create({
+        data: {
+          channelId: adminChannel.id,
+          messageType: "REQUEST_NOTIFICATION",
+          body: `Password reset requested for user: ${user.name} (${user.username})`,
+          relatedEntityType: "User",
+          relatedEntityId: user.id,
+          metadataJson: {
+            requestType: "Password Reset",
+            actorName: user.name,
+            actionLabel: "Requested a password reset",
+            details: {
+              "User": user.name,
+              "Username": user.username,
+              "Email": user.email ?? "N/A"
+            }
+          }
+        }
+      });
+    }
   }
 
   // Always return the same generic message to prevent user enumeration

@@ -34,8 +34,8 @@ export default async function ForgotPasswordPage({ searchParams }: ForgotPasswor
         <CardContent>
           <form action={forgotPasswordAction} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="identifier">Username or Email</Label>
-              <Input id="identifier" name="identifier" type="text" required />
+              <Label htmlFor="identifier">Enter username or work email</Label>
+              <Input id="identifier" name="identifier" type="text" placeholder="username or email" required />
             </div>
             
             <div className="min-h-6" role="status" aria-live="polite">

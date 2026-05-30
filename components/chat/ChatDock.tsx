@@ -394,7 +394,9 @@ export function ChatDock({ canManageChat, defaultOpen = false }: ChatDockProps) 
                         "max-w-[82%] rounded-2xl border p-3 text-sm shadow-sm",
                         message.isOwnMessage
                           ? "rounded-br-md border-primary/30 bg-primary text-primary-foreground"
-                          : "rounded-bl-md bg-card"
+                          : message.messageType === "USER_MESSAGE"
+                            ? "rounded-bl-md border-red-200 bg-red-50 text-red-950 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-50"
+                            : "rounded-bl-md border-amber-200 bg-amber-50 text-amber-950 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-50"
                       )}
                     >
                       <div className="mb-1 flex flex-wrap items-center justify-between gap-2">

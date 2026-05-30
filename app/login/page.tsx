@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { getCurrentUser } from "@/lib/auth";
 import { loginAction } from "@/app/login/actions";
 import { Button } from "@/components/ui/button";
@@ -28,8 +29,8 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
   return (
     <main className="flex min-h-screen items-center justify-center bg-slate-100 px-4 py-10">
       <Card className="w-full max-w-md">
-        <CardHeader className="space-y-3">
-          <div className="flex h-12 w-12 items-center justify-center">
+        <CardHeader className="flex flex-col items-center space-y-3 text-center">
+          <div className="flex h-16 w-16 items-center justify-center">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src="/logo.svg"
@@ -42,7 +43,6 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
             <div className="text-sm font-semibold text-primary dark:text-blue-400 mt-1">
               Integrated Operations Management System
             </div>
-            <CardDescription className="mt-2.5">Sign in with your username or office email.</CardDescription>
           </div>
         </CardHeader>
         <CardContent>
@@ -62,6 +62,11 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
             <Button type="submit" className="w-full">
               Sign in
             </Button>
+            <div className="mt-4 text-center text-sm">
+              <Link href="/forgot-password" className="text-primary hover:underline">
+                Forgot Password?
+              </Link>
+            </div>
           </form>
         </CardContent>
       </Card>
