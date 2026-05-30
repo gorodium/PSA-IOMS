@@ -1,5 +1,4 @@
 import { redirect } from "next/navigation";
-import { LogIn } from "lucide-react";
 import { getCurrentUser } from "@/lib/auth";
 import { loginAction } from "@/app/login/actions";
 import { Button } from "@/components/ui/button";
@@ -30,12 +29,20 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
     <main className="flex min-h-screen items-center justify-center bg-slate-100 px-4 py-10">
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-3">
-          <div className="flex h-12 w-12 items-center justify-center rounded-md bg-primary text-primary-foreground">
-            <LogIn className="h-6 w-6" aria-hidden="true" />
+          <div className="flex h-12 w-12 items-center justify-center">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/logo.svg"
+              alt="PSA Logo"
+              className="h-full w-full object-contain"
+            />
           </div>
           <div>
-            <CardTitle className="text-xl">PSA Misamis Oriental</CardTitle>
-            <CardDescription className="mt-2">Sign in with your username or office email.</CardDescription>
+            <CardTitle className="text-xl font-bold tracking-tight text-slate-900 dark:text-slate-50">PSA Misamis Oriental</CardTitle>
+            <div className="text-sm font-semibold text-primary dark:text-blue-400 mt-1">
+              Integrated Operations Management System
+            </div>
+            <CardDescription className="mt-2.5">Sign in with your username or office email.</CardDescription>
           </div>
         </CardHeader>
         <CardContent>
