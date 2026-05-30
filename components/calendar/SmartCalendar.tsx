@@ -141,7 +141,13 @@ export function SmartCalendar({ isAdmin = false, personnel = [] }: { isAdmin?: b
             <tbody>
               {dayActivities.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="px-6 py-12 text-center text-slate-500">No activities scheduled for this day.</td>
+                  <td colSpan={4} className="px-6 py-16 text-center">
+                    <div className="flex flex-col items-center justify-center text-slate-400">
+                      <CalendarIcon className="w-10 h-10 mb-3 opacity-50" />
+                      <p className="font-medium text-slate-500 dark:text-slate-400">No activities scheduled for this day.</p>
+                      <p className="text-xs mt-1">Select a different date or add a new activity.</p>
+                    </div>
+                  </td>
                 </tr>
               ) : dayActivities.map(activity => (
                 <tr 
@@ -210,6 +216,11 @@ export function SmartCalendar({ isAdmin = false, personnel = [] }: { isAdmin?: b
                 </div>
                 
                 <div className="flex-1 space-y-3 overflow-y-auto pr-1 pb-4 scrollbar-thin scrollbar-thumb-slate-300 dark:scrollbar-thumb-slate-800 scrollbar-track-transparent">
+                  {dayActivities.length === 0 ? (
+                    <div className="h-20 flex items-center justify-center border-2 border-dashed border-slate-100 dark:border-white/5 rounded-xl">
+                      <span className="text-xs text-slate-400 font-medium">No activities</span>
+                    </div>
+                  ) : null}
                   {dayActivities.map(activity => (
                     <div 
                       key={activity.id} 
@@ -402,6 +413,16 @@ export function SmartCalendar({ isAdmin = false, personnel = [] }: { isAdmin?: b
             {currentTime}
           </div>
         </div>
+      </div>
+
+      {/* Legend */}
+      <div className="flex flex-wrap items-center gap-4 px-6 py-3 bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-white/5 text-xs font-medium">
+        <span className="text-slate-500 dark:text-slate-400 mr-2 uppercase tracking-wider text-[10px] font-bold">Legend:</span>
+        <div className="flex items-center gap-1.5"><Users className="w-3.5 h-3.5 text-rose-500" /> Work Event</div>
+        <div className="flex items-center gap-1.5"><Globe className="w-3.5 h-3.5 text-violet-500" /> Holiday</div>
+        <div className="flex items-center gap-1.5"><Plane className="w-3.5 h-3.5 text-blue-500" /> Travel</div>
+        <div className="flex items-center gap-1.5"><Car className="w-3.5 h-3.5 text-emerald-500" /> Vehicle</div>
+        <div className="flex items-center gap-1.5"><Building className="w-3.5 h-3.5 text-amber-500" /> Room</div>
       </div>
 
       {/* Render Current View */}

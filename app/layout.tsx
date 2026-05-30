@@ -1,12 +1,14 @@
 import type { Metadata } from "next";
+import NextTopLoader from 'nextjs-toploader';
+import { Inter } from "next/font/google";
 import "./globals.css";
+
+const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "PSA - Misamis Oriental Operations Monitoring",
   description: "Integrated Operations Monitoring System"
 };
-
-import NextTopLoader from 'nextjs-toploader';
 
 export default function RootLayout({
   children
@@ -30,7 +32,7 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body>
+      <body className={inter.className}>
         <NextTopLoader color="#3b82f6" showSpinner={false} />
         {children}
       </body>

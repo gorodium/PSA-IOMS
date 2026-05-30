@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useTransition } from "react";
 import { format } from "date-fns";
-import { Save, Plus, Trash2, ChevronDown, ChevronRight, Edit3, Settings2, CheckCircle2, ArrowUp, ArrowDown, Copy } from "lucide-react";
+import { Save, Plus, Trash2, ChevronDown, ChevronRight, Edit3, Settings2, CheckCircle2, ArrowUp, ArrowDown, Copy, FolderOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { calculateTaskStatus } from "@/lib/status";
@@ -707,7 +707,11 @@ export function MonthlyProjectDetails({ project, canEdit, allPersonnel }: { proj
 
                     <div className="space-y-1.5">
                       {tasks.length === 0 && !isEditing && (
-                        <div className="py-6 text-center text-sm text-slate-500">No activities recorded for this section.</div>
+                        <div className="py-12 flex flex-col items-center justify-center text-center text-sm text-muted-foreground border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-lg bg-slate-50/50 dark:bg-slate-900/20 m-2">
+                          <FolderOpen className="h-10 w-10 mb-3 text-slate-300 dark:text-slate-700" />
+                          <p className="font-medium text-slate-600 dark:text-slate-400">No activities recorded for this section.</p>
+                          <p className="text-xs text-slate-500 mt-1">Activities added in edit mode will appear here.</p>
+                        </div>
                       )}
                       
                       {tasks.map((task) => {

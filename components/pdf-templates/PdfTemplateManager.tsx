@@ -472,7 +472,7 @@ export function PdfTemplateManager({ templates, programs }: { templates: Templat
     : false;
 
   // These must be defined BEFORE the keyboard useEffect that depends on them
-  const pageSize = fieldMap?.pageSizes[pageNumber - 1] ?? { width: 612, height: 792 };
+  const pageSize = useMemo(() => fieldMap?.pageSizes[pageNumber - 1] ?? { width: 612, height: 792 }, [fieldMap?.pageSizes, pageNumber]);
   const fieldsOnPage = useMemo(
     () => fieldMap?.fields.filter((field) => field.pageNumber === pageNumber) ?? [],
     [fieldMap?.fields, pageNumber]
@@ -622,30 +622,8 @@ export function PdfTemplateManager({ templates, programs }: { templates: Templat
     };
   }
 
-  // Returns percentage-based position of pointer within the canvas container (0-100)
-  function pctFromPointer(event: PointerEvent<HTMLElement>) {
-    const rect = canvasRef.current?.getBoundingClientRect();
-    if (!rect) return null;
-    return {
-      x: Math.max(0, Math.min(100, ((event.clientX - rect.left) / rect.width) * 100)),
-      y: Math.max(0, Math.min(100, ((event.clientY - rect.top) / rect.height) * 100))
-    };
-  }
-
-  // Move a single primary field AND all co-selected fields by the same delta
-
   const groupMoveRef = useRef<{ baseX: number; baseY: number; fieldSnapshots: Record<string, { x: number; y: number }> } | null>(null);
 
-  function moveSelectedField(event: PointerEvent<HTMLDivElement>) {
-    if (!selectedField) return;
-    const coords = coordinatesFromPointer(event);
-    if (!coords) return;
-    updateField(selectedField.id, {
-      x: Math.max(0, Math.min(pageSize.width, coords.x)),
-      y: Math.max(0, Math.min(pageSize.height, coords.y)),
-      pageNumber
-    });
-  }
 
   return (
     <div className="space-y-6">

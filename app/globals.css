@@ -3,44 +3,62 @@
 @tailwind utilities;
 
 :root {
-  --background: 210 25% 98%;
+  --background: 210 33% 99%;
   --foreground: 222 47% 11%;
   --card: 0 0% 100%;
   --card-foreground: 222 47% 11%;
-  --primary: 215 55% 24%;
+  --primary: 222 47% 25%;
   --primary-foreground: 0 0% 100%;
   --secondary: 210 20% 94%;
   --secondary-foreground: 222 47% 14%;
   --muted: 210 18% 93%;
-  --muted-foreground: 215 16% 39%;
-  --accent: 198 44% 92%;
-  --accent-foreground: 215 45% 22%;
-  --destructive: 0 66% 44%;
+  --muted-foreground: 215 16% 45%;
+  --accent: 210 40% 96%;
+  --accent-foreground: 222 47% 25%;
+  --destructive: 0 72% 51%;
   --destructive-foreground: 0 0% 100%;
-  --border: 214 18% 84%;
-  --input: 214 18% 84%;
-  --ring: 215 55% 24%;
+  --border: 214 18% 88%;
+  --input: 214 18% 88%;
+  --ring: 222 47% 25%;
   --radius: 0.5rem;
+  
+  --success: 142 71% 45%;
+  --success-foreground: 0 0% 100%;
+  --warning: 42 100% 50%;
+  --warning-foreground: 222 47% 11%;
+  --info: 200 98% 39%;
+  --info-foreground: 0 0% 100%;
+  --special: 270 70% 50%;
+  --special-foreground: 0 0% 100%;
 }
 
 .dark {
-  --background: 222 47% 8%;
+  --background: 222 47% 6%;
   --foreground: 210 25% 96%;
-  --card: 222 41% 12%;
+  --card: 222 41% 10%;
   --card-foreground: 210 25% 96%;
-  --primary: 198 68% 42%;
-  --primary-foreground: 0 0% 100%;
+  --primary: 215 90% 65%;
+  --primary-foreground: 222 47% 11%;
   --secondary: 222 30% 17%;
   --secondary-foreground: 210 25% 94%;
   --muted: 222 28% 16%;
   --muted-foreground: 215 16% 70%;
-  --accent: 202 40% 18%;
-  --accent-foreground: 198 70% 88%;
+  --accent: 215 30% 18%;
+  --accent-foreground: 215 90% 65%;
   --destructive: 0 66% 44%;
   --destructive-foreground: 0 0% 100%;
-  --border: 222 24% 24%;
-  --input: 222 24% 24%;
-  --ring: 198 68% 48%;
+  --border: 222 24% 18%;
+  --input: 222 24% 18%;
+  --ring: 215 90% 65%;
+  
+  --success: 142 71% 45%;
+  --success-foreground: 0 0% 100%;
+  --warning: 42 90% 60%;
+  --warning-foreground: 222 47% 11%;
+  --info: 200 98% 45%;
+  --info-foreground: 0 0% 100%;
+  --special: 270 70% 60%;
+  --special-foreground: 0 0% 100%;
 }
 
 * {

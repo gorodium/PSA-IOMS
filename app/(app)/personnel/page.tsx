@@ -265,16 +265,66 @@ export default async function PersonnelPage({ searchParams }: PersonnelPageProps
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {filteredPersonnel.map(person => (
-          <EmployeeCard 
-            key={person.id} 
-            personnel={person} 
-            canEdit={canUpdate} 
-            searchParams={params} 
-          />
-        ))}
-      </div>
+      {sortBy.startsWith("fullName") || sortBy.startsWith("section") ? (
+        <div className="space-y-8">
+          {sections.map(([section]) => {
+            const personnelInSection = filteredPersonnel.filter(p => (p.section || "N/A") === section || (section === "Head of Office" && p.section === "Head of Office"));
+            if (personnelInSection.length === 0) return null;
+            
+            return (
+              <div key={section} className="space-y-4">
+                <h2 className="text-xl font-bold text-slate-800 dark:text-slate-200 border-b border-slate-200 dark:border-white/10 pb-2">
+                  {section}
+                </h2>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  {personnelInSection.map(person => (
+                    <EmployeeCard 
+                      key={person.id} 
+                      personnel={person} 
+                      canEdit={canUpdate} 
+                      searchParams={params} 
+                    />
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+          
+          {/* Uncategorized / N/A Section */}
+          {(() => {
+            const uncategorized = filteredPersonnel.filter(p => !p.section || p.section === "N/A");
+            if (uncategorized.length === 0) return null;
+            return (
+              <div className="space-y-4">
+                <h2 className="text-xl font-bold text-slate-800 dark:text-slate-200 border-b border-slate-200 dark:border-white/10 pb-2">
+                  Uncategorized / Other
+                </h2>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  {uncategorized.map(person => (
+                    <EmployeeCard 
+                      key={person.id} 
+                      personnel={person} 
+                      canEdit={canUpdate} 
+                      searchParams={params} 
+                    />
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {filteredPersonnel.map(person => (
+            <EmployeeCard 
+              key={person.id} 
+              personnel={person} 
+              canEdit={canUpdate} 
+              searchParams={params} 
+            />
+          ))}
+        </div>
+      )}
       
       {filteredPersonnel.length === 0 && (
         <div className="flex flex-col items-center justify-center rounded-xl border border-dashed p-12 text-center bg-card shadow-sm">

@@ -36,13 +36,13 @@ function AssignmentDisplay({ value, itemKey }: { value: string; itemKey?: string
 
   if (value === "AVP") {
     return (
-      <span className="inline-flex rounded-md border border-slate-300 bg-slate-50 px-3 py-1 text-sm font-bold text-slate-800 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">
+      <span className="inline-flex rounded-md border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 px-3 py-1 text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 shadow-sm">
         AVP
       </span>
     );
   }
 
-  return <span className="font-bold">{value}</span>;
+  return <span className="font-bold text-slate-800 dark:text-slate-200">{value}</span>;
 }
 
 export default async function ConvocationPage() {
