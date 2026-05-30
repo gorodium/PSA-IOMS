@@ -143,11 +143,9 @@ export async function generateConvocationItems(input: {
         const counts = await assignmentCounts(input.groupId, template.rotationKey);
         const available = eligibleMembers.filter((member) => !usedPersonnelIds.has(member.personnelId));
         const pool = available.length > 0 ? available : eligibleMembers;
-        const selected = [...pool].sort((a, b) => {
-          const countDiff = (counts.get(a.personnelId) ?? 0) - (counts.get(b.personnelId) ?? 0);
-          if (countDiff !== 0) return countDiff;
-          return a.personnel.fullName.localeCompare(b.personnel.fullName);
-        })[0];
+        const minCount = Math.min(...pool.map((m) => counts.get(m.personnelId) ?? 0));
+        const minCountMembers = pool.filter((m) => (counts.get(m.personnelId) ?? 0) === minCount);
+        const selected = minCountMembers[Math.floor(Math.random() * minCountMembers.length)];
 
         assignedPersonnelId = selected.personnelId;
         selectedByRotationKey.set(template.rotationKey, selected.personnelId);

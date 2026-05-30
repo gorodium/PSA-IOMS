@@ -26,6 +26,7 @@ export type PdfTemplateField = {
   isBold: boolean;
   alignment: "left" | "center" | "right";
   maxWidth: number;
+  maxHeight?: number;
   wrap: boolean;
   shrinkToFit: boolean;
 };
@@ -88,11 +89,12 @@ export function parsePdfFieldMap(value: unknown, pageCount = 1): PdfTemplateFiel
           x: Number(field.x) || 0,
           y: Number(field.y) || 0,
           fontSize: Math.max(6, Number(field.fontSize) || 11),
-          fontFamily: (["Helvetica", "Times Roman", "Courier", "Roboto", "Open Sans", "Montserrat", "Lato", "Poppins", "Inter", "Trajan Pro"] as const).includes(field.fontFamily as any) ? field.fontFamily as any : "Helvetica",
+          fontFamily: (["Helvetica", "Times Roman", "Courier", "Roboto", "Open Sans", "Montserrat", "Lato", "Poppins", "Inter", "Trajan Pro"] as const).includes(field.fontFamily as PdfTemplateField["fontFamily"]) ? field.fontFamily as PdfTemplateField["fontFamily"] : "Helvetica",
           fontColor: typeof field.fontColor === "string" && /^#[0-9A-Fa-f]{6}$/.test(field.fontColor) ? field.fontColor : undefined,
           isBold: Boolean(field.isBold),
           alignment: field.alignment === "center" || field.alignment === "right" ? field.alignment : "left",
           maxWidth: Math.max(20, Number(field.maxWidth) || 180),
+          maxHeight: field.maxHeight ? Math.max(10, Number(field.maxHeight)) : undefined,
           wrap: Boolean(field.wrap),
           shrinkToFit: Boolean(field.shrinkToFit)
         }))
@@ -113,27 +115,38 @@ function fontNameFor(field: PdfTemplateField) {
 }
 
 function wrapText(value: string, font: PDFFont, fontSize: number, maxWidth: number) {
-  const words = value.split(/\s+/).filter(Boolean);
   const lines: string[] = [];
-  let current = "";
-
-  for (const word of words) {
-    const next = current ? `${current} ${word}` : word;
-    if (font.widthOfTextAtSize(next, fontSize) <= maxWidth || !current) {
-      current = next;
-    } else {
-      lines.push(current);
-      current = word;
+  const hardLines = value.split('\n');
+  for (const hardLine of hardLines) {
+    const words = hardLine.split(/\s+/).filter(Boolean);
+    if (words.length === 0) {
+      lines.push("");
+      continue;
     }
+    let current = "";
+    for (const word of words) {
+      const next = current ? `${current} ${word}` : word;
+      if (font.widthOfTextAtSize(next, fontSize) <= maxWidth || !current) {
+        current = next;
+      } else {
+        lines.push(current);
+        current = word;
+      }
+    }
+    if (current) lines.push(current);
   }
-
-  if (current) lines.push(current);
   return lines.length > 0 ? lines : [value];
 }
 
 function shrinkFontSize(value: string, font: PDFFont, initialSize: number, maxWidth: number) {
   let size = initialSize;
-  while (size > 6 && font.widthOfTextAtSize(value, size) > maxWidth) {
+  const lines = value.split('\n');
+  while (size > 6) {
+    let maxLineWidth = 0;
+    for (const line of lines) {
+      maxLineWidth = Math.max(maxLineWidth, font.widthOfTextAtSize(line, size));
+    }
+    if (maxLineWidth <= maxWidth) break;
     size -= 0.5;
   }
   return size;
@@ -192,7 +205,16 @@ export async function getConvocationOverlayData(programId: string) {
     qualityPolicy: getOutput("quality_policy"),
     zumba: getOutput("zumba", true),
     welcomeRemarks: getOutput("welcome_remarks"),
-    message: getOutput("message"),
+    message: (() => {
+      const name = getOutput("message");
+      const pos = getPosition("message");
+      if (pos) return [name, pos].join("\n");
+      if (name.includes(",")) {
+        const parts = name.split(",");
+        return `${parts[0].trim()}\n${parts.slice(1).join(",").trim()}`;
+      }
+      return name;
+    })(),
     messagePosition: getPosition("message"),
     closingRemarks: getOutput("closing_remarks"),
     preparedBy: ""
@@ -258,11 +280,15 @@ export async function createOverlayPdf(input: {
     const fontSize = !field.wrap && field.shrinkToFit
       ? shrinkFontSize(value, font, field.fontSize, field.maxWidth)
       : field.fontSize;
-    const lines = field.wrap ? wrapText(value, font, fontSize, field.maxWidth) : [value];
+    const lines = field.wrap ? wrapText(value, font, fontSize, field.maxWidth) : value.split('\n');
     const lineHeight = fontSize * 1.2;
 
-    if (!field.wrap && font.widthOfTextAtSize(value, fontSize) > field.maxWidth) {
-      warnings.push(`${field.label} exceeds its max width.`);
+    // Check max width per-line (value may contain \n which crashes widthOfTextAtSize)
+    if (!field.wrap) {
+      const maxLineWidth = lines.reduce((m, l) => Math.max(m, font.widthOfTextAtSize(l, fontSize)), 0);
+      if (maxLineWidth > field.maxWidth) {
+        warnings.push(`${field.label} exceeds its max width.`);
+      }
     }
 
     const parsedColor = field.fontColor && /^#[0-9A-Fa-f]{6}$/.test(field.fontColor)
@@ -274,12 +300,32 @@ export async function createOverlayPdf(input: {
       : rgb(0, 0, 0);
 
     lines.forEach((line, index) => {
-      const x = alignedX(page, field, line, font, fontSize);
-      const y = page.getHeight() - field.y - fontSize - index * lineHeight;
+      let currentFontSize = fontSize;
+      let currentX = alignedX(page, field, line, font, currentFontSize);
+      // field.y = distance from page TOP (0 = page top, increasing downward).
+      // pdf-lib y = distance from page BOTTOM (0 = page bottom, increasing upward).
+      // Text baseline is ~0.75*fontSize below the visual top of the text.
+      // So: drawY = pageHeight - field.y - ascent, where ascent ≈ 0.75*fontSize
+      let currentY = page.getHeight() - field.y - (currentFontSize * 0.75) - index * lineHeight;
+
+      if (field.key === "message" && index > 0) {
+        // Position line: smaller font, tight spacing under the name line
+        currentFontSize = Math.max(6, fontSize - 2);
+        const nameLine = lines[0];
+        const nameWidth = font.widthOfTextAtSize(nameLine, fontSize);
+        const posWidth = font.widthOfTextAtSize(line, currentFontSize);
+        // Center position text under the name
+        const nameX = alignedX(page, field, nameLine, font, fontSize);
+        currentX = nameX + (nameWidth - posWidth) / 2;
+        // Place immediately below the name with tight line spacing
+        const nameY = page.getHeight() - field.y - (fontSize * 0.75);
+        currentY = nameY - lineHeight;
+      }
+
       page.drawText(line, {
-        x,
-        y,
-        size: fontSize,
+        x: currentX,
+        y: currentY,
+        size: currentFontSize,
         font,
         color: parsedColor,
         maxWidth: field.maxWidth

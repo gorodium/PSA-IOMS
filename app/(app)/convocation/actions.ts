@@ -793,3 +793,59 @@ export async function setDefaultConvocationPdfTemplateAction(_prevState: unknown
   revalidatePath("/convocation/admin");
   return { ok: true, message: "Default PDF template updated successfully." };
 }
+
+export async function replaceMessageSpeakerAction(itemId: string, personnelId: string): Promise<void> {
+  const user = await requireConvocationAdmin();
+  
+  const item = await db.convocationProgramItem.findUnique({
+    where: { id: itemId },
+    include: { program: true }
+  });
+
+  if (!item) {
+    throw new Error("Program assignment could not be found.");
+  }
+
+  const personnel = await db.personnel.findUnique({
+    where: { id: personnelId }
+  });
+
+  if (!personnel) {
+    throw new Error("Selected employee could not be found.");
+  }
+
+  const textValue = personnel.fullName + (personnel.position ? `, ${personnel.position}` : "");
+
+  await db.$transaction(async (tx) => {
+    await tx.convocationProgramItem.update({
+      where: { id: item.id },
+      data: {
+        assignedPersonnelId: personnel.id,
+        fixedTextValue: textValue,
+        assignmentMode: ConvocationAssignmentMode.OVERRIDDEN,
+        overrideReason: `Manual speaker replacement for message.`
+      }
+    });
+
+    // Mirror to emcee if national_anthem is mirrored? No, message doesn't mirror to emcee, national_anthem does. So no extra mirroring needed.
+  });
+
+  await writeAuditLog({
+    userId: user.id,
+    action: "MANUAL_REPLACE_MESSAGE",
+    entityType: "ConvocationProgramItem",
+    entityId: item.id,
+    oldValueJson: {
+      assignedPersonnelId: item.assignedPersonnelId,
+      fixedTextValue: item.fixedTextValue
+    },
+    newValueJson: {
+      assignedPersonnelId: personnel.id,
+      fixedTextValue: textValue
+    }
+  });
+
+  revalidatePath("/convocation");
+  revalidatePath(`/convocation/${item.programId}`);
+  revalidatePath(`/convocation/${item.programId}/print`);
+}

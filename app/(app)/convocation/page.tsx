@@ -50,7 +50,7 @@ export default async function ConvocationPage() {
   const isAdmin = isConvocationAdmin(user?.role);
   const nextMonday = getNextMonday();
 
-  const [currentProgram, groups, programs] = await Promise.all([
+  const [currentProgram, groups, programs, activePdfTemplate] = await Promise.all([
     db.convocationProgram.findFirst({
       where: {
         status: { not: ConvocationProgramStatus.ARCHIVED },
@@ -83,6 +83,10 @@ export default async function ConvocationPage() {
       include: { group: true },
       orderBy: { convocationDate: "desc" },
       take: 12
+    }),
+    db.pdfTemplate.findFirst({
+      where: { templateFeature: "CONVOCATION_PROGRAM", isActive: true, isDefault: true },
+      select: { id: true }
     })
   ]);
 
@@ -139,12 +143,19 @@ export default async function ConvocationPage() {
                   <Button asChild size="sm" variant="outline">
                     <Link href={`/convocation/${currentProgram.id}`}>View</Link>
                   </Button>
-                  <Button asChild size="sm">
-                    <Link href={`/convocation/${currentProgram.id}/print`}>
-                      <FileText className="h-4 w-4" />
-                      Print
-                    </Link>
-                  </Button>
+                  {activePdfTemplate ? (
+                    <Button asChild size="sm">
+                      <Link href={`/settings/pdf-templates/${activePdfTemplate.id}/overlay?source=convocation&programId=${currentProgram.id}&mode=download`}>
+                        <FileText className="h-4 w-4 mr-2" />
+                        Download PDF
+                      </Link>
+                    </Button>
+                  ) : (
+                    <Button disabled size="sm" title="Please set a default PDF template in Admin settings first">
+                      <FileText className="h-4 w-4 mr-2" />
+                      Download PDF
+                    </Button>
+                  )}
                   {isAdmin && currentProgram.status !== ConvocationProgramStatus.FINALIZED && (
                     <form action={deleteUpcomingConvocationProgramAction.bind(null, currentProgram.id)}>
                       <Button

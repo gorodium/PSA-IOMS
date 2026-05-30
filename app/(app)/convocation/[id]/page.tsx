@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, FileText } from "lucide-react";
 import { ConfirmReplaceButton } from "@/components/convocation/ConfirmReplaceButton";
+import { ReplaceMessageSpeakerButton } from "@/components/convocation/ReplaceMessageSpeakerButton";
 import { ConvocationStatusBadge } from "@/components/convocation/ConvocationStatusBadge";
 import {
   deleteUpcomingConvocationProgramAction,
@@ -59,32 +60,38 @@ export default async function ConvocationDetailPage({ params }: ConvocationDetai
   const [user, resolvedParams] = await Promise.all([getCurrentUser(), params]);
   const isAdmin = isConvocationAdmin(user?.role);
 
-  const program = await db.convocationProgram.findUnique({
-    where: { id: resolvedParams.id },
-    include: {
-      group: {
-        include: {
-          members: {
-            where: { isActive: true },
-            include: { personnel: true }
+  const [program, activePdfTemplate, personnelList] = await Promise.all([
+    db.convocationProgram.findUnique({
+      where: { id: resolvedParams.id },
+      include: {
+        group: {
+          include: {
+            members: {
+              where: { isActive: true },
+              include: { personnel: true }
+            }
           }
+        },
+        items: {
+          include: { assignedPersonnel: true },
+          orderBy: { itemOrder: "asc" }
+        },
+        history: {
+          include: { personnel: true },
+          orderBy: { createdAt: "asc" }
         }
-      },
-      items: {
-        include: { assignedPersonnel: true },
-        orderBy: { itemOrder: "asc" }
-      },
-      history: {
-        include: { personnel: true },
-        orderBy: { createdAt: "asc" }
       }
-    }
-  });
-
-  const activePdfTemplate = await db.pdfTemplate.findFirst({
-    where: { templateFeature: "CONVOCATION_PROGRAM", isActive: true, isDefault: true },
-    select: { id: true }
-  });
+    }),
+    db.pdfTemplate.findFirst({
+      where: { templateFeature: "CONVOCATION_PROGRAM", isActive: true, isDefault: true },
+      select: { id: true }
+    }),
+    db.personnel.findMany({
+      where: { isActive: true },
+      select: { id: true, fullName: true, position: true },
+      orderBy: { fullName: "asc" }
+    })
+  ]);
 
   if (!program || program.status === ConvocationProgramStatus.ARCHIVED) {
     notFound();
@@ -113,18 +120,24 @@ export default async function ConvocationDetailPage({ params }: ConvocationDetai
         <div className="flex flex-wrap gap-2">
           <ConvocationStatusBadge status={program.status} />
           {activePdfTemplate ? (
-            <Button asChild variant="outline">
-              <Link href={`/settings/pdf-templates/${activePdfTemplate.id}/overlay?source=convocation&programId=${program.id}&mode=preview`} target="_blank">
-                <FileText className="h-4 w-4 mr-2" />
-                View PDF Program
-              </Link>
-            </Button>
+            <>
+              <Button asChild variant="outline">
+                <Link href={`/settings/pdf-templates/${activePdfTemplate.id}/overlay?source=convocation&programId=${program.id}&mode=preview`} target="_blank">
+                  <FileText className="h-4 w-4 mr-2" />
+                  View PDF Program
+                </Link>
+              </Button>
+              <Button asChild>
+                <Link href={`/settings/pdf-templates/${activePdfTemplate.id}/overlay?source=convocation&programId=${program.id}&mode=download`}>
+                  <FileText className="h-4 w-4 mr-2" />
+                  Download PDF
+                </Link>
+              </Button>
+            </>
           ) : (
-            <Button asChild variant="outline">
-              <Link href={`/convocation/${program.id}/print`}>
-                <FileText className="h-4 w-4 mr-2" />
-                Customized Program PDF
-              </Link>
+            <Button disabled variant="outline" title="Please set a default PDF template in Admin settings first">
+              <FileText className="h-4 w-4 mr-2" />
+              Download PDF
             </Button>
           )}
           {isAdmin && (
@@ -174,13 +187,17 @@ export default async function ConvocationDetailPage({ params }: ConvocationDetai
                           <AssignmentDisplay value={assignment} itemKey={item.itemKey} />
                           {isAdmin &&
                             program.status === ConvocationProgramStatus.FINALIZED &&
-                            item.assignedPersonnelId &&
-                            item.rotationKey &&
-                            item.countInRotation && (
-                              <form action={overrideFinalizedConvocationAssignmentAction.bind(null, item.id)}>
-                                <ConfirmReplaceButton />
-                              </form>
-                            )}
+                            (item.itemKey === "message" ? (
+                              <ReplaceMessageSpeakerButton itemId={item.id} personnelList={personnelList} />
+                            ) : (
+                              item.assignedPersonnelId &&
+                              item.rotationKey &&
+                              item.countInRotation && (
+                                <form action={overrideFinalizedConvocationAssignmentAction.bind(null, item.id)}>
+                                  <ConfirmReplaceButton />
+                                </form>
+                              )
+                            ))}
                         </div>
                       </TableCell>
                     </TableRow>

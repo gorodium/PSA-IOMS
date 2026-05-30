@@ -38,7 +38,7 @@ export async function resetUserPasswordAction(formData: FormData) {
 
   if (!userId) throw new Error("User ID is required.");
 
-  const tempPassword = "ChangeMe123!";
+  const tempPassword = "changeme123";
   const passwordHash = await hashPassword(tempPassword);
 
   const user = await db.user.update({
@@ -127,7 +127,7 @@ export async function saveUserAction(formData: FormData) {
     });
   } else {
     // Generate temporary password
-    const tempPassword = "ChangeMe123!";
+    const tempPassword = "changeme123";
     const passwordHash = await hashPassword(tempPassword);
 
     const user = await db.user.create({

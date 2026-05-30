@@ -31,13 +31,26 @@ export async function GET(request: NextRequest, { params }: OverlayRouteProps) {
   }
 
   const data = await getConvocationOverlayData(programId);
-  const result = await createOverlayPdf({
-    templateFileUrl: template.fileUrl,
-    fieldMap: parsePdfFieldMap(template.fieldMap, template.pageCount),
-    data
-  });
+  let result;
+  try {
+    result = await createOverlayPdf({
+      templateFileUrl: template.fileUrl,
+      fieldMap: parsePdfFieldMap(template.fieldMap, template.pageCount),
+      data
+    });
+  } catch (error) {
+    console.error("PDF EXPORT ERROR:", error);
+    return NextResponse.json({ error: String(error) }, { status: 500 });
+  }
+
+  let filename = `${template.name.replace(/[^a-zA-Z0-9._-]/g, "_")}-overlay.pdf`;
+  if (source === "convocation" && data.programDate) {
+    const cleanDate = data.programDate.replace(/[\s,]+/g, "_");
+    filename = `Flag_Ceremony_${cleanDate}.pdf`;
+  }
+
   const disposition = mode === "download"
-    ? `attachment; filename="${template.name.replace(/[^a-zA-Z0-9._-]/g, "_")}-overlay.pdf"`
+    ? `attachment; filename="${filename}"`
     : "inline";
 
   return new NextResponse(Buffer.from(result.bytes), {

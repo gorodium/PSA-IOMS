@@ -1,10 +1,11 @@
 "use client";
 
-import { FormEvent, PointerEvent, useEffect, useMemo, useRef, useState, useActionState } from "react";
+import { FormEvent, PointerEvent, useCallback, useEffect, useMemo, useRef, useState, useActionState } from "react";
 import { useRouter } from "next/navigation";
-import { Archive, FileText, Save, Trash2, Upload, AlignLeft, AlignCenter, AlignRight, AlignCenterHorizontal, AlignCenterVertical, Maximize } from "lucide-react";
+import { Archive, FileText, Save, Trash2, Undo, Upload, AlignLeft, AlignCenter, AlignRight, AlignCenterHorizontal, AlignCenterVertical, Maximize } from "lucide-react";
 import {
   archivePdfTemplateAction,
+  deletePdfTemplateAction,
   savePdfTemplateFieldsAction,
   setDefaultPdfTemplateAction,
   getConvocationPreviewDataAction
@@ -14,6 +15,92 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+
+// PDF.js canvas renderer — renders the PDF page at exact pixel dimensions for
+// perfect coordinate alignment between the field-placement editor and the export.
+// Falls back to an <iframe> if pdfjs fails (e.g. no internet for CDN worker).
+function PdfPageCanvas({ fileUrl, pageNumber, className }: { fileUrl: string; pageNumber: number; className?: string }) {
+  const canvasElRef = useRef<HTMLCanvasElement>(null);
+  const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
+
+  useEffect(() => {
+    let cancelled = false;
+    setStatus("loading");
+
+    async function render() {
+      const pdfjsLib = await import("pdfjs-dist");
+
+      // Use the unpkg CDN for the worker so it's always available regardless
+      // of local static-file serving limitations in the dev server.
+      pdfjsLib.GlobalWorkerOptions.workerSrc =
+        `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
+
+      const loadingTask = pdfjsLib.getDocument(fileUrl);
+      const pdfDoc = await loadingTask.promise;
+      if (cancelled) { pdfDoc.destroy(); return; }
+
+      const page = await pdfDoc.getPage(pageNumber);
+      if (cancelled) { pdfDoc.destroy(); return; }
+
+      const canvas = canvasElRef.current;
+      if (!canvas) { pdfDoc.destroy(); return; }
+
+      // Render at device pixel ratio for crisp text on HiDPI screens.
+      const dpr = window.devicePixelRatio || 1;
+      const containerWidth = canvas.parentElement?.clientWidth ?? 800;
+      const viewport = page.getViewport({ scale: 1 });
+      const scale = (containerWidth / viewport.width) * dpr;
+      const scaledViewport = page.getViewport({ scale });
+
+      canvas.width = Math.round(scaledViewport.width);
+      canvas.height = Math.round(scaledViewport.height);
+      canvas.style.width = "100%";
+      canvas.style.height = "100%";
+
+      const ctx = canvas.getContext("2d");
+      if (!ctx) { pdfDoc.destroy(); return; }
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await page.render({ canvasContext: ctx, viewport: scaledViewport } as any).promise;
+      if (!cancelled) {
+        pdfDoc.destroy();
+        setStatus("ready");
+      }
+    }
+
+    render().catch((err) => {
+      console.error("[PdfPageCanvas] render failed:", err);
+      if (!cancelled) setStatus("error");
+    });
+
+    return () => { cancelled = true; };
+  }, [fileUrl, pageNumber]);
+
+  if (status === "error") {
+    // Fallback: iframe so the layout is always visible even if pdfjs fails.
+    return (
+      <iframe
+        src={`${fileUrl}#page=${pageNumber}&toolbar=0&navpanes=0&scrollbar=0&view=FitH`}
+        title="PDF background"
+        className={className}
+        style={{ border: 0, position: "absolute", top: 0, left: 0, width: "calc(100% + 20px)", height: "calc(100% + 20px)" }}
+        tabIndex={-1}
+      />
+    );
+  }
+
+  return (
+    <div className={className} style={{ position: "absolute", inset: 0 }}>
+      {status === "loading" && (
+        <div className="absolute inset-0 flex items-center justify-center bg-gray-100 text-gray-400 text-sm">
+          Loading PDF…
+        </div>
+      )}
+      <canvas ref={canvasElRef} style={{ display: status === "ready" ? "block" : "none", width: "100%", height: "100%" }} />
+    </div>
+  );
+}
+
 
 type PdfField = {
   id: string;
@@ -28,6 +115,7 @@ type PdfField = {
   isBold: boolean;
   alignment: "left" | "center" | "right";
   maxWidth: number;
+  maxHeight?: number;
   wrap: boolean;
   shrinkToFit: boolean;
 };
@@ -104,49 +192,6 @@ const bindingOptionsByFeature: Record<string, string[]> = {
     "status"
   ],
   GENERAL: ["customText"]
-};
-
-const placeholderData: Record<string, Record<string, string>> = {
-  CONVOCATION_PROGRAM: {
-    programDate: "June 8, 2026",
-    venue: "PSA Misamis Oriental",
-    assignedGroup: "Group 3",
-    emcee: "Juan Dela Cruz",
-    nationalAnthem: "Maria Clara",
-    openingPrayer: "Pedro Penduko",
-    bagongPilipinas: "Jose Rizal",
-    flagPledge: "Andres Bonifacio",
-    lingkodBayanPledge: "Apolinario Mabini",
-    psaVisionMission: "Emilio Aguinaldo",
-    qualityPolicy: "Gabriela Silang",
-    zumba: "Lapu-Lapu",
-    welcomeRemarks: "Marcelo H. del Pilar",
-    message: "Antonio Luna",
-    closingRemarks: "Melchora Aquino",
-    preparedBy: "Admin User"
-  },
-  VEHICLE_SCHEDULING: {
-    requestingEmployee: "Juan Dela Cruz",
-    travelDate: "June 8, 2026",
-    purpose: "Official Business",
-    destination: "Cagayan de Oro City",
-    departureTime: "08:00 AM",
-    expectedReturnTime: "05:00 PM",
-    joiningEmployees: "Maria Clara, Pedro Penduko",
-    assignedVehicle: "Toyota Hiace (ABC 1234)",
-    soNumber: "SO-2026-1234",
-    status: "APPROVED"
-  },
-  ROOM_RESERVATION: {
-    requestingEmployee: "Juan Dela Cruz",
-    roomName: "Conference Room A",
-    reservationDate: "June 8, 2026",
-    reservationSchedule: "08:00 AM - 12:00 NN",
-    halfDaySlot: "Morning",
-    purpose: "Team Meeting",
-    remarks: "Needs projector",
-    status: "APPROVED"
-  }
 };
 
 const initialPdfTemplateActionState = {
@@ -370,7 +415,135 @@ export function PdfTemplateManager({ templates, programs }: { templates: Templat
   const [recentColors, setRecentColors] = useState<string[]>([]);
   const [resizingFieldId, setResizingFieldId] = useState<string | null>(null);
   const [selectedFieldId, setSelectedFieldId] = useState<string | null>(fieldMap?.fields[0]?.id ?? null);
+  // Multi-select state
+  const [selectedFieldIds, setSelectedFieldIds] = useState<Set<string>>(new Set());
+  // Marquee (rubber-band) selection state — coords in PDF points
+  const [marquee, setMarquee] = useState<{ x1: number; y1: number; x2: number; y2: number } | null>(null);
+  const marqueeStartRef = useRef<{ x: number; y: number } | null>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
+
+  // Undo History & Interaction States
+  const fieldHistory = useRef<Record<string, FieldMap[]>>({});
+  const isInteractingRef = useRef(false);
+  const dragStartFieldMapRef = useRef<FieldMap | null>(null);
+
+  const startInteraction = useCallback(() => {
+    if (!selectedTemplate) return;
+    isInteractingRef.current = true;
+    dragStartFieldMapRef.current = fieldMapsByTemplate[selectedTemplate.id];
+  }, [selectedTemplate, fieldMapsByTemplate]);
+
+  const endInteraction = useCallback(() => {
+    if (!isInteractingRef.current) return;
+    isInteractingRef.current = false;
+    if (!selectedTemplate || !dragStartFieldMapRef.current) return;
+    
+    const current = fieldMapsByTemplate[selectedTemplate.id];
+    const start = dragStartFieldMapRef.current;
+    
+    if (JSON.stringify(current) !== JSON.stringify(start)) {
+      const stack = fieldHistory.current[selectedTemplate.id] ?? [];
+      fieldHistory.current[selectedTemplate.id] = [...stack.slice(-49), start];
+    }
+    dragStartFieldMapRef.current = null;
+  }, [selectedTemplate, fieldMapsByTemplate]);
+
+  const undo = useCallback(() => {
+    if (!selectedTemplate) return;
+    const stack = fieldHistory.current[selectedTemplate.id];
+    if (!stack || stack.length === 0) return;
+    
+    const prev = stack[stack.length - 1];
+    fieldHistory.current[selectedTemplate.id] = stack.slice(0, -1);
+    
+    setFieldMapsByTemplate((current) => ({
+      ...current,
+      [selectedTemplate.id]: prev
+    }));
+    
+    const selectedStillExists = prev.fields.some((f) => f.id === selectedFieldId);
+    if (!selectedStillExists) {
+      setSelectedFieldId(prev.fields[0]?.id ?? null);
+    }
+  }, [selectedTemplate, selectedFieldId]);
+
+  const canUndo = selectedTemplate
+    ? (fieldHistory.current[selectedTemplate.id]?.length ?? 0) > 0
+    : false;
+
+  // These must be defined BEFORE the keyboard useEffect that depends on them
+  const pageSize = fieldMap?.pageSizes[pageNumber - 1] ?? { width: 612, height: 792 };
+  const fieldsOnPage = useMemo(
+    () => fieldMap?.fields.filter((field) => field.pageNumber === pageNumber) ?? [],
+    [fieldMap?.fields, pageNumber]
+  );
+
+  const selectAll = useCallback(() => {
+    setSelectedFieldIds(new Set(fieldsOnPage.map((f) => f.id)));
+  }, [fieldsOnPage]);
+
+  const clearMultiSelect = useCallback(() => {
+    setSelectedFieldIds(new Set());
+  }, []);
+
+  // Shared arrow-key movement — moves all selected fields (or just the primary one)
+  const moveGroupByArrow = useCallback((dx: number, dy: number) => {
+    if (!fieldMap || !selectedTemplate) return;
+    // Determine which field IDs to move
+    const ids: string[] = selectedFieldIds.size > 1
+      ? Array.from(selectedFieldIds)
+      : selectedFieldId ? [selectedFieldId] : [];
+    if (ids.length === 0) return;
+
+    const updated = fieldMap.fields.map((f) => {
+      if (!ids.includes(f.id)) return f;
+      return {
+        ...f,
+        x: Math.max(0, Math.min(pageSize.width, f.x + dx)),
+        y: Math.max(0, Math.min(pageSize.height, f.y + dy))
+      };
+    });
+    setFieldMapsByTemplate((cur) => ({
+      ...cur,
+      [selectedTemplate.id]: { ...fieldMap, fields: updated }
+    }));
+  }, [fieldMap, selectedTemplate, selectedFieldIds, selectedFieldId, pageSize, setFieldMapsByTemplate]);
+
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent) {
+      const activeEl = document.activeElement;
+      const isInput = activeEl && (
+        activeEl.tagName === "INPUT" ||
+        activeEl.tagName === "TEXTAREA" ||
+        activeEl.tagName === "SELECT" ||
+        activeEl.getAttribute("contenteditable") === "true"
+      );
+      
+      if (isInput) return; // Let input handle its own undo
+
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "z") {
+        event.preventDefault();
+        undo();
+      } else if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "a") {
+        // Ctrl+A: select all fields on the current page
+        event.preventDefault();
+        selectAll();
+      } else if (event.key === "Escape") {
+        clearMultiSelect();
+      } else if (selectedFieldIds.size > 1 || selectedFieldId) {
+        // Arrow keys move all selected fields (or just the primary one)
+        const step = event.shiftKey ? 10 : 1;
+        if (event.key === "ArrowUp")    { event.preventDefault(); moveGroupByArrow(0, -step); }
+        else if (event.key === "ArrowDown")  { event.preventDefault(); moveGroupByArrow(0,  step); }
+        else if (event.key === "ArrowLeft")  { event.preventDefault(); moveGroupByArrow(-step, 0); }
+        else if (event.key === "ArrowRight") { event.preventDefault(); moveGroupByArrow( step, 0); }
+      }
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [undo, selectAll, clearMultiSelect, selectedFieldIds, selectedFieldId, moveGroupByArrow]);
 
   const hasUnsavedChanges = selectedTemplate
     ? JSON.stringify(fieldMapsByTemplate[selectedTemplate.id]) !== JSON.stringify(savedFieldMaps[selectedTemplate.id])
@@ -383,14 +556,19 @@ export function PdfTemplateManager({ templates, programs }: { templates: Templat
   }
 
   const selectedField = fieldMap?.fields.find((field) => field.id === selectedFieldId) ?? null;
-  const pageSize = fieldMap?.pageSizes[pageNumber - 1] ?? { width: 612, height: 792 };
-  const fieldsOnPage = useMemo(
-    () => fieldMap?.fields.filter((field) => field.pageNumber === pageNumber) ?? [],
-    [fieldMap?.fields, pageNumber]
-  );
 
   function updateFieldMap(next: FieldMap) {
     if (!selectedTemplate) return;
+    
+    // If not dragging/resizing, this is a discrete change, push history
+    if (!isInteractingRef.current) {
+      const current = fieldMapsByTemplate[selectedTemplate.id];
+      if (current) {
+        const stack = fieldHistory.current[selectedTemplate.id] ?? [];
+        fieldHistory.current[selectedTemplate.id] = [...stack.slice(-49), current];
+      }
+    }
+
     setFieldMapsByTemplate((current) => ({
       ...current,
       [selectedTemplate.id]: next
@@ -443,6 +621,20 @@ export function PdfTemplateManager({ templates, programs }: { templates: Templat
       y: Math.round(((event.clientY - rect.top) / rect.height) * pageSize.height)
     };
   }
+
+  // Returns percentage-based position of pointer within the canvas container (0-100)
+  function pctFromPointer(event: PointerEvent<HTMLElement>) {
+    const rect = canvasRef.current?.getBoundingClientRect();
+    if (!rect) return null;
+    return {
+      x: Math.max(0, Math.min(100, ((event.clientX - rect.left) / rect.width) * 100)),
+      y: Math.max(0, Math.min(100, ((event.clientY - rect.top) / rect.height) * 100))
+    };
+  }
+
+  // Move a single primary field AND all co-selected fields by the same delta
+
+  const groupMoveRef = useRef<{ baseX: number; baseY: number; fieldSnapshots: Record<string, { x: number; y: number }> } | null>(null);
 
   function moveSelectedField(event: PointerEvent<HTMLDivElement>) {
     if (!selectedField) return;
@@ -582,6 +774,33 @@ export function PdfTemplateManager({ templates, programs }: { templates: Templat
                   <Trash2 className="h-3.5 w-3.5 mr-1" />
                   Delete
                 </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  disabled={!canUndo}
+                  onClick={undo}
+                  className="disabled:opacity-40"
+                  title="Undo last change (Ctrl+Z)"
+                >
+                  <Undo className="h-3.5 w-3.5 mr-1" />
+                  Undo
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={selectAll}
+                  title="Select all fields on this page (Ctrl+A)"
+                >
+                  <Maximize className="h-3.5 w-3.5 mr-1" />
+                  Select All
+                </Button>
+                {selectedFieldIds.size > 1 && (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-primary/15 text-primary text-xs font-medium px-2 py-0.5 border border-primary/30">
+                    {selectedFieldIds.size} selected — drag any to move all
+                  </span>
+                )}
                 <Button asChild variant="outline" size="sm" className="ml-auto">
                   <a href={selectedTemplate.fileUrl} target="_blank" rel="noreferrer">
                     <FileText className="h-3.5 w-3.5 mr-1" />
@@ -592,23 +811,66 @@ export function PdfTemplateManager({ templates, programs }: { templates: Templat
 
               <div
                 ref={canvasRef}
-                className="relative mx-auto w-full max-w-3xl overflow-hidden rounded-lg border bg-white shadow-sm"
-                style={{ aspectRatio: `${pageSize.width} / ${pageSize.height}`, containerType: "inline-size" }}
+                className="relative mx-auto w-full max-w-3xl overflow-hidden rounded-lg border bg-white shadow-sm select-none"
+                style={{ aspectRatio: `${pageSize.width} / ${pageSize.height}`, containerType: "inline-size", cursor: marquee ? "crosshair" : "default" }}
                 onPointerDown={(event) => {
-                  if (event.target === event.currentTarget) {
-                    moveSelectedField(event);
+                  // Only act when clicking on the canvas background itself (not a field)
+                  if (event.target !== event.currentTarget) return;
+                  event.currentTarget.setPointerCapture(event.pointerId);
+                  const coords = coordinatesFromPointer(event);
+                  if (!coords) return;
+                  marqueeStartRef.current = coords;
+                  setMarquee({ x1: coords.x, y1: coords.y, x2: coords.x, y2: coords.y });
+                }}
+                onPointerMove={(event) => {
+                  if (!marqueeStartRef.current || event.buttons !== 1) return;
+                  const coords = coordinatesFromPointer(event);
+                  if (!coords) return;
+                  setMarquee({
+                    x1: marqueeStartRef.current.x,
+                    y1: marqueeStartRef.current.y,
+                    x2: coords.x,
+                    y2: coords.y
+                  });
+                }}
+                onPointerUp={(event) => {
+                  if (!marqueeStartRef.current || !marquee) {
+                    marqueeStartRef.current = null;
+                    setMarquee(null);
+                    return;
                   }
+                  // Commit marquee: find all fields whose top-left corner is inside the selection rect
+                  const minX = Math.min(marquee.x1, marquee.x2);
+                  const maxX = Math.max(marquee.x1, marquee.x2);
+                  const minY = Math.min(marquee.y1, marquee.y2);
+                  const maxY = Math.max(marquee.y1, marquee.y2);
+                  const dragged = Math.abs(marquee.x2 - marquee.x1) > 4 || Math.abs(marquee.y2 - marquee.y1) > 4;
+                  if (dragged) {
+                    const hit = fieldsOnPage
+                      .filter((f) => f.x >= minX && f.x <= maxX && f.y >= minY && f.y <= maxY)
+                      .map((f) => f.id);
+                    if (hit.length > 0) {
+                      setSelectedFieldIds(new Set(hit));
+                      setSelectedFieldId(hit[0]);
+                    } else {
+                      clearMultiSelect();
+                    }
+                  } else {
+                    // Plain click on background — clear multi-select
+                    clearMultiSelect();
+                  }
+                  marqueeStartRef.current = null;
+                  setMarquee(null);
+                  event.currentTarget.releasePointerCapture(event.pointerId);
                 }}
               >
-                {/* PDF background — overflow-hidden on parent clips the iframe's native scrollbars */}
-                <div className="absolute inset-0 pointer-events-none" style={{ overflow: "clip" }}>
-                  <iframe
+                {/* PDF background — rendered via pdf.js canvas for pixel-perfect alignment */}
+                <div className="absolute inset-0 pointer-events-none">
+                  <PdfPageCanvas
                     key={`${selectedTemplate.id}-${pageNumber}`}
-                    src={`${selectedTemplate.fileUrl}#page=${pageNumber}&toolbar=0&navpanes=0&scrollbar=0&view=FitH`}
-                    title={`${selectedTemplate.name} page ${pageNumber}`}
-                    className="absolute bg-white border-0"
-                    style={{ top: 0, left: 0, width: "calc(100% + 20px)", height: "calc(100% + 20px)" }}
-                    tabIndex={-1}
+                    fileUrl={selectedTemplate.fileUrl}
+                    pageNumber={pageNumber}
+                    className="absolute inset-0 w-full h-full"
                   />
                 </div>
                 <div className="absolute inset-0 bg-transparent">
@@ -621,21 +883,46 @@ export function PdfTemplateManager({ templates, programs }: { templates: Templat
                   {snapLines.y !== undefined && (
                     <div className="absolute left-0 right-0 h-px bg-blue-500/60 z-10 pointer-events-none" style={{ top: `${(snapLines.y / pageSize.height) * 100}%` }} />
                   )}
+                {/* Marquee selection rectangle */}
+                  {marquee && (() => {
+                    const minX = Math.min(marquee.x1, marquee.x2);
+                    const minY = Math.min(marquee.y1, marquee.y2);
+                    const maxX = Math.max(marquee.x1, marquee.x2);
+                    const maxY = Math.max(marquee.y1, marquee.y2);
+                    return (
+                      <div
+                        className="absolute pointer-events-none z-50 border-2 border-primary bg-primary/10"
+                        style={{
+                          left: `${(minX / pageSize.width) * 100}%`,
+                          top: `${(minY / pageSize.height) * 100}%`,
+                          width: `${((maxX - minX) / pageSize.width) * 100}%`,
+                          height: `${((maxY - minY) / pageSize.height) * 100}%`
+                        }}
+                      />
+                    );
+                  })()}
                   {fieldsOnPage.map((field) => {
                     const fontSizeCqi = (field.fontSize / pageSize.width) * 100;
+                    const isSelected = selectedFieldIds.has(field.id);
+                    const isPrimary = selectedFieldId === field.id;
                     return (
                       <button
                         key={field.id}
                         type="button"
                         className={cn(
-                          "absolute block border shadow-sm hover:ring hover:ring-primary/50 overflow-hidden leading-[1.2]",
-                          selectedFieldId === field.id ? "border-primary/80 ring-2 ring-primary" : "border-sky-400/60 bg-white/40 backdrop-blur-[1px]",
-                          field.wrap ? "whitespace-normal break-words" : "whitespace-nowrap"
+                          "absolute block border shadow-sm hover:ring hover:ring-primary/50 overflow-visible leading-[1.2]",
+                          isPrimary
+                            ? "border-primary/80 ring-2 ring-primary"
+                            : isSelected
+                            ? "border-primary/60 ring-1 ring-primary/60 bg-primary/10"
+                            : "border-sky-400/60 bg-white/40 backdrop-blur-[1px]",
+                          field.wrap ? "whitespace-pre-wrap break-words" : "whitespace-pre"
                         )}
                         style={{
                           left: `${(field.x / pageSize.width) * 100}%`,
                           top: `${(field.y / pageSize.height) * 100}%`,
                           width: `${(field.maxWidth / pageSize.width) * 100}%`,
+                          height: field.maxHeight ? `${(field.maxHeight / pageSize.height) * 100}%` : undefined,
                           fontSize: `${fontSizeCqi}cqi`,
                           fontFamily: field.fontFamily === "Times Roman" ? "Times New Roman, serif" : field.fontFamily === "Courier" ? "Courier New, monospace" : field.fontFamily === "Helvetica" ? "Helvetica, Arial, sans-serif" : `'${field.fontFamily}', sans-serif`,
                           color: field.fontColor || "#000000",
@@ -644,78 +931,203 @@ export function PdfTemplateManager({ templates, programs }: { templates: Templat
                         }}
                       onClick={(event) => {
                         event.stopPropagation();
-                        setSelectedFieldId(field.id);
+                        if (event.shiftKey) {
+                          // Shift-click: toggle this field in the multi-selection
+                          setSelectedFieldIds((prev) => {
+                            const next = new Set(prev);
+                            if (next.has(field.id)) next.delete(field.id);
+                            else next.add(field.id);
+                            return next;
+                          });
+                          setSelectedFieldId(field.id);
+                        } else {
+                          setSelectedFieldId(field.id);
+                          // Plain click on a field that isn't already multi-selected → clear multi-select
+                          if (!selectedFieldIds.has(field.id)) {
+                            clearMultiSelect();
+                          }
+                        }
                       }}
                       onKeyDown={(event) => {
                         if (selectedFieldId !== field.id) return;
                         const step = event.shiftKey ? 10 : 1;
-                        if (event.key === "ArrowUp") {
-                          event.preventDefault();
-                          updateField(field.id, { y: Math.max(0, field.y - step) });
-                        } else if (event.key === "ArrowDown") {
-                          event.preventDefault();
-                          updateField(field.id, { y: Math.min(pageSize.height, field.y + step) });
-                        } else if (event.key === "ArrowLeft") {
-                          event.preventDefault();
-                          updateField(field.id, { x: Math.max(0, field.x - step) });
-                        } else if (event.key === "ArrowRight") {
-                          event.preventDefault();
-                          updateField(field.id, { x: Math.min(pageSize.width, field.x + step) });
-                        }
+                        const isArrow = ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(event.key);
+                        if (!isArrow) return;
+                        event.preventDefault();
+                        const dx = event.key === "ArrowLeft" ? -step : event.key === "ArrowRight" ? step : 0;
+                        const dy = event.key === "ArrowUp"   ? -step : event.key === "ArrowDown"  ? step : 0;
+                        moveGroupByArrow(dx, dy);
                       }}
                       onPointerDown={(event) => {
                         event.stopPropagation();
                         setSelectedFieldId(field.id);
                         const target = event.currentTarget;
                         target.setPointerCapture(event.pointerId);
+                        startInteraction();
+                        // Snapshot start positions of all selected fields for group move
+                        const ids = selectedFieldIds.size > 0 && selectedFieldIds.has(field.id)
+                          ? selectedFieldIds
+                          : new Set([field.id]);
+                        const coords = coordinatesFromPointer(event);
+                        if (coords) {
+                          const snapshots: Record<string, { x: number; y: number }> = {};
+                          for (const id of ids) {
+                            const f = fieldsOnPage.find((ff) => ff.id === id);
+                            if (f) snapshots[id] = { x: f.x, y: f.y };
+                          }
+                          groupMoveRef.current = { baseX: coords.x, baseY: coords.y, fieldSnapshots: snapshots };
+                        }
                       }}
                       onPointerMove={(event) => {
                         if (event.buttons !== 1 || resizingFieldId === field.id) return;
                         setSelectedFieldId(field.id);
                         const coords = coordinatesFromPointer(event);
-                        if (!coords) return;
-                        
-                        let newX = coords.x;
-                        let newY = coords.y;
-                        let snapX: number | undefined;
-                        let snapY: number | undefined;
-                        
-                        for (const other of fieldsOnPage) {
-                          if (other.id === field.id) continue;
-                          if (Math.abs(newX - other.x) < 5) { newX = other.x; snapX = other.x; }
-                          if (Math.abs(newY - other.y) < 5) { newY = other.y; snapY = other.y; }
+                        if (!coords || !groupMoveRef.current) return;
+
+                        const dx = coords.x - groupMoveRef.current.baseX;
+                        const dy = coords.y - groupMoveRef.current.baseY;
+                        const ids = Object.keys(groupMoveRef.current.fieldSnapshots);
+
+                        if (ids.length > 1) {
+                          // Group move: update all selected fields simultaneously
+                          if (!fieldMap) return;
+                          const updated = fieldMap.fields.map((f) => {
+                            const snap = groupMoveRef.current!.fieldSnapshots[f.id];
+                            if (!snap) return f;
+                            return {
+                              ...f,
+                              x: Math.max(0, Math.min(pageSize.width, snap.x + dx)),
+                              y: Math.max(0, Math.min(pageSize.height, snap.y + dy))
+                            };
+                          });
+                          setFieldMapsByTemplate((cur) => ({
+                            ...cur,
+                            [selectedTemplate.id]: { ...fieldMap, fields: updated }
+                          }));
+                        } else {
+                          // Single field move with snapping
+                          let newX = Math.max(0, Math.min(pageSize.width, coords.x));
+                          let newY = Math.max(0, Math.min(pageSize.height, coords.y));
+                          let snapX: number | undefined;
+                          let snapY: number | undefined;
+
+                          for (const other of fieldsOnPage) {
+                            if (other.id === field.id) continue;
+                            if (Math.abs(newX - other.x) < 5) { newX = other.x; snapX = other.x; }
+                            if (Math.abs(newY - other.y) < 5) { newY = other.y; snapY = other.y; }
+                          }
+
+                          setSnapLines({ x: snapX, y: snapY });
+                          updateField(field.id, { x: newX, y: newY });
                         }
-                        
-                        setSnapLines({ x: snapX, y: snapY });
-                        updateField(field.id, { x: newX, y: newY });
                       }}
-                      onPointerUp={() => setSnapLines({})}
+                      onPointerUp={(event) => {
+                        setSnapLines({});
+                        event.currentTarget.releasePointerCapture(event.pointerId);
+                        endInteraction();
+                      }}
                     >
                       {/* Show real data from selected program, fallback to key name */}
-                        {(previewData?.[field.key]) ?? field.label}
+                        {(() => {
+                          const raw = (previewData?.[field.key]) ?? field.label;
+                          if (field.key === "message") {
+                            // Split by real newline first, then fall back to comma
+                            let name = raw;
+                            let position = "";
+                            if (raw.includes("\n")) {
+                              const parts = raw.split("\n");
+                              name = parts[0];
+                              position = parts.slice(1).join("\n");
+                            } else if (raw.includes(",")) {
+                              const parts = raw.split(",");
+                              name = parts[0].trim();
+                              position = parts.slice(1).join(",").trim();
+                            }
+                            return (
+                              <div className="inline-flex flex-col items-center leading-[1.2]">
+                                <span>{name}</span>
+                                {position && (
+                                  <span style={{ fontSize: "calc(100% - 2cqi)" }}>{position}</span>
+                                )}
+                              </div>
+                            );
+                          }
+                          return raw;
+                        })()}
                         
                         {selectedFieldId === field.id && (
-                          <div
-                            className="absolute right-0 top-0 bottom-0 w-3 cursor-ew-resize hover:bg-primary/20"
-                            onPointerDown={(event) => {
-                              event.stopPropagation();
-                              setResizingFieldId(field.id);
-                              event.currentTarget.setPointerCapture(event.pointerId);
-                            }}
-                            onPointerMove={(event) => {
-                              if (event.buttons !== 1 || resizingFieldId !== field.id) return;
-                              event.stopPropagation();
-                              const coords = coordinatesFromPointer(event);
-                              if (coords) {
-                                const newWidth = Math.max(20, coords.x - field.x);
-                                updateField(field.id, { maxWidth: newWidth });
-                              }
-                            }}
-                            onPointerUp={(event) => {
-                              event.stopPropagation();
-                              setResizingFieldId(null);
-                            }}
-                          />
+                          <>
+                            <div
+                              className="absolute right-0 top-0 bottom-0 w-3 cursor-ew-resize hover:bg-primary/20 z-10"
+                              onPointerDown={(event) => {
+                                event.stopPropagation();
+                                setResizingFieldId(field.id);
+                                event.currentTarget.setPointerCapture(event.pointerId);
+                                startInteraction();
+                              }}
+                              onPointerMove={(event) => {
+                                if (event.buttons !== 1 || resizingFieldId !== field.id) return;
+                                event.stopPropagation();
+                                const coords = coordinatesFromPointer(event);
+                                if (coords) {
+                                  const newWidth = Math.max(20, coords.x - field.x);
+                                  updateField(field.id, { maxWidth: newWidth });
+                                }
+                              }}
+                              onPointerUp={(event) => {
+                                setResizingFieldId(null);
+                                event.currentTarget.releasePointerCapture(event.pointerId);
+                                endInteraction();
+                              }}
+                            />
+                            <div
+                              className="absolute bottom-0 left-0 right-0 h-3 cursor-ns-resize hover:bg-primary/20 z-10"
+                              onPointerDown={(event) => {
+                                event.stopPropagation();
+                                setResizingFieldId(field.id);
+                                event.currentTarget.setPointerCapture(event.pointerId);
+                                startInteraction();
+                              }}
+                              onPointerMove={(event) => {
+                                if (event.buttons !== 1 || resizingFieldId !== field.id) return;
+                                event.stopPropagation();
+                                const coords = coordinatesFromPointer(event);
+                                if (coords) {
+                                  const newHeight = Math.max(10, coords.y - field.y);
+                                  updateField(field.id, { maxHeight: newHeight });
+                                }
+                              }}
+                              onPointerUp={(event) => {
+                                setResizingFieldId(null);
+                                event.currentTarget.releasePointerCapture(event.pointerId);
+                                endInteraction();
+                              }}
+                            />
+                            <div
+                              className="absolute bottom-0 right-0 w-4 h-4 cursor-nwse-resize hover:bg-primary/20 z-20"
+                              onPointerDown={(event) => {
+                                event.stopPropagation();
+                                setResizingFieldId(field.id);
+                                event.currentTarget.setPointerCapture(event.pointerId);
+                                startInteraction();
+                              }}
+                              onPointerMove={(event) => {
+                                if (event.buttons !== 1 || resizingFieldId !== field.id) return;
+                                event.stopPropagation();
+                                const coords = coordinatesFromPointer(event);
+                                if (coords) {
+                                  const newWidth = Math.max(20, coords.x - field.x);
+                                  const newHeight = Math.max(10, coords.y - field.y);
+                                  updateField(field.id, { maxWidth: newWidth, maxHeight: newHeight });
+                                }
+                              }}
+                              onPointerUp={(event) => {
+                                setResizingFieldId(null);
+                                event.currentTarget.releasePointerCapture(event.pointerId);
+                                endInteraction();
+                              }}
+                            />
+                          </>
                         )}
                       </button>
                     );
@@ -746,6 +1158,19 @@ export function PdfTemplateManager({ templates, programs }: { templates: Templat
                     Archive Template
                   </Button>
                 </form>
+                <form 
+                  onSubmit={(e) => {
+                    if (!confirm("Are you sure you want to permanently delete this PDF template? This cannot be undone.")) {
+                      e.preventDefault();
+                    }
+                  }}
+                  action={deletePdfTemplateAction.bind(null, selectedTemplate.id)}
+                >
+                  <Button type="submit" variant="outline" className="w-full border-red-200 text-red-700 hover:bg-red-50">
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Delete Template
+                  </Button>
+                </form>
               </CardContent>
             </Card>
 
@@ -769,16 +1194,22 @@ export function PdfTemplateManager({ templates, programs }: { templates: Templat
                       ))}
                     </Select>
                     <div className="flex flex-wrap gap-2">
-                      <Button asChild variant="outline" disabled={!selectedProgramId}>
-                        <a href={`/settings/pdf-templates/${selectedTemplate.id}/overlay?source=convocation&programId=${selectedProgramId}&mode=preview`} target="_blank" rel="noreferrer">
-                          Preview PDF
-                        </a>
-                      </Button>
-                      <Button asChild disabled={!selectedProgramId}>
-                        <a href={`/settings/pdf-templates/${selectedTemplate.id}/overlay?source=convocation&programId=${selectedProgramId}&mode=download`}>
-                          Export PDF
-                        </a>
-                      </Button>
+                      {hasUnsavedChanges ? (
+                        <Button disabled variant="secondary" className="w-full">
+                          Save before Exporting
+                        </Button>
+                      ) : (
+                        <Button 
+                          disabled={!selectedProgramId} 
+                          onClick={() => {
+                            if (selectedProgramId) {
+                              window.location.href = `/settings/pdf-templates/${selectedTemplate.id}/overlay?source=convocation&programId=${selectedProgramId}&mode=download`;
+                            }
+                          }}
+                        >
+                          Download Program PDF
+                        </Button>
+                      )}
                     </div>
                     {isFetchingPreview && (
                       <p className="text-xs text-muted-foreground animate-pulse">Loading program data into canvas preview…</p>
@@ -810,17 +1241,7 @@ export function PdfTemplateManager({ templates, programs }: { templates: Templat
                   </div>
                 ) : (
                   <div className="space-y-3">
-                    <label className="space-y-1 block">
-                      <span className="text-xs font-medium text-muted-foreground">Data binding key</span>
-                      <Select value={selectedField.key} onChange={(event) => updateField(selectedField.id, { key: event.target.value })}>
-                        {bindingOptions.map((option) => <option key={option} value={option}>{option}</option>)}
-                      </Select>
-                    </label>
-                    <label className="space-y-1 block">
-                      <span className="text-xs font-medium text-muted-foreground">Label</span>
-                      <Input value={selectedField.label} onChange={(event) => updateField(selectedField.id, { label: event.target.value })} />
-                    </label>
-                    <div className="flex items-center gap-2 pt-2 border-t mt-2">
+                    <div className="flex items-center gap-2">
                       <div className="flex border rounded-md overflow-hidden bg-background">
                         <Button 
                           type="button" 

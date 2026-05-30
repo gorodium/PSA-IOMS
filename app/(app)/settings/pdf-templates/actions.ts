@@ -157,6 +157,40 @@ export async function archivePdfTemplateAction(templateId: string) {
   revalidatePath("/settings/pdf-templates");
 }
 
+export async function deletePdfTemplateAction(templateId: string) {
+  const user = await requireSuperAdmin();
+  const existing = await db.pdfTemplate.findUnique({ where: { id: templateId } });
+  if (!existing) {
+    throw new Error("PDF template could not be found.");
+  }
+
+  if (existing.fileUrl.startsWith("/uploads/pdf-templates/")) {
+    const filePath = path.join(process.cwd(), "public", existing.fileUrl.replace(/^\//, ""));
+    try {
+      const { unlink } = await import("fs/promises");
+      await unlink(filePath);
+    } catch (e) {
+      console.warn(`Could not delete file ${filePath}:`, e);
+    }
+  }
+
+  const deleted = await db.pdfTemplate.delete({
+    where: { id: existing.id }
+  });
+
+  await writeAuditLog({
+    userId: user.id,
+    action: "DELETE",
+    entityType: "PdfTemplate",
+    entityId: deleted.id,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    oldValueJson: existing as any,
+    newValueJson: null
+  });
+
+  revalidatePath("/settings/pdf-templates");
+}
+
 export async function setDefaultPdfTemplateAction(
   _previousState: PdfTemplateActionResult,
   formData: FormData
