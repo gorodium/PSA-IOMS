@@ -37,8 +37,10 @@ export const navigationGroups: NavGroup[] = [
     label: "Operations",
     items: [
       { name: "Monitoring Board", href: "/dashboard", icon: BarChart3 },
+      { name: "Workload Monitoring", href: "/reports/workload", icon: ActivitySquare },
       { name: "Calendar of Activities", href: "/calendar", icon: CalendarDays },
-      { name: "Projects", href: "/projects", icon: FolderKanban }
+      { name: "Projects", href: "/projects", icon: FolderKanban },
+      { name: "CRVS", href: "/projects?category=CIVIL_REGISTRATION_VITAL_STATISTICS", basePath: "/projects", icon: BookOpen }
     ]
   },
   {
@@ -63,9 +65,7 @@ export const navigationGroups: NavGroup[] = [
   {
     label: "Reports",
     items: [
-      { name: "Administrative Reports", href: "/projects?category=ADMINISTRATIVE_ACCOUNTING_REPORTS", basePath: "/projects", icon: FileText },
-      { name: "CRVS", href: "/projects?category=CIVIL_REGISTRATION_VITAL_STATISTICS", basePath: "/projects", icon: BookOpen },
-      { name: "Workload Monitoring", href: "/reports/workload", icon: ActivitySquare }
+      { name: "Administrative Reports", href: "/projects?category=ADMINISTRATIVE_ACCOUNTING_REPORTS", basePath: "/projects", icon: FileText }
     ]
   },
   {
