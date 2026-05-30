@@ -130,18 +130,14 @@ export function SidebarNav({ user, onNavigate }: { user: AuthUser | null, onNavi
 export function AppSidebar({ user }: { user: AuthUser | null }) {
   return (
     <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 border-r border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-950 lg:flex lg:flex-col">
-      <div className="flex h-16 shrink-0 items-center gap-3 px-6 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950">
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded bg-transparent">
+      <div className="flex h-16 shrink-0 items-center justify-center border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950">
+        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded bg-transparent">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src="/logo.svg"
             alt="PSA Logo"
             className="h-full w-full object-contain"
           />
-        </div>
-        <div className="flex flex-col justify-center">
-          <p className="text-sm font-bold text-slate-900 dark:text-slate-50 leading-tight">PSA Misamis Oriental</p>
-          <p className="text-[10px] font-medium uppercase tracking-widest text-primary/80 dark:text-primary-foreground/70">IOMS</p>
         </div>
       </div>
 

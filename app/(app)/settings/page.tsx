@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { FileClock, FileText, MessageSquare, ShieldCheck, Users } from "lucide-react";
+import { FileClock, FileText, MessageSquare, ShieldCheck, Users, Info } from "lucide-react";
 import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 import { checkUserPermission } from "@/lib/permissions";
@@ -45,6 +45,14 @@ const settingsCards = [
     icon: FileClock,
     resource: "admin" as const,
     superAdminOnly: true
+  },
+  {
+    title: "About / System Information",
+    description: "Learn about the IOMS purpose, modules, and intended users.",
+    href: "/settings/about",
+    icon: Info,
+    resource: "settings" as const,
+    superAdminOnly: false
   }
 ];
 

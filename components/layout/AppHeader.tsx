@@ -33,15 +33,15 @@ export function AppHeader({ user }: { user: AuthUser | null }) {
                   <img src="/logo.svg" alt="PSA Logo" className="h-full w-full object-contain" />
                 </div>
                 <div className="flex flex-col justify-center">
-                  <p className="text-sm font-bold text-slate-900 dark:text-slate-50 leading-tight">PSA Misamis Oriental</p>
-                  <p className="text-[10px] font-medium uppercase tracking-widest text-primary/80 dark:text-primary-foreground/70">IOMS</p>
+                  <p className="text-sm font-bold text-slate-900 dark:text-slate-50 leading-tight">PSA Misamis Oriental IOMS</p>
+                  <p className="text-[10px] font-medium uppercase tracking-widest text-primary/80 dark:text-primary-foreground/70">Internal Operations Platform</p>
                 </div>
               </div>
               <SidebarNav user={user} onNavigate={() => setOpen(false)} />
             </SheetContent>
           </Sheet>
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-bold text-slate-950 dark:text-slate-50 leading-tight truncate">
+            <p className="text-base font-bold text-slate-950 dark:text-slate-50 leading-tight truncate">
               PSA Misamis Oriental IOMS
             </p>
           </div>
@@ -49,11 +49,11 @@ export function AppHeader({ user }: { user: AuthUser | null }) {
 
         {/* Desktop Title */}
         <div className="hidden lg:flex flex-col min-w-0 flex-1">
-          <p className="text-sm md:text-base font-bold text-slate-900 dark:text-slate-100 leading-tight truncate">
+          <p className="text-base md:text-lg font-bold text-slate-900 dark:text-slate-100 leading-tight truncate tracking-tight">
             PSA Misamis Oriental IOMS
           </p>
-          <p className="text-xs text-muted-foreground truncate">
-            Integrated Operations Monitoring System
+          <p className="text-xs font-medium text-muted-foreground truncate mt-0.5">
+            Internal Operations Management Platform
           </p>
         </div>
 
