@@ -40,7 +40,7 @@ export const navigationGroups: NavGroup[] = [
       { name: "Workload Monitoring", href: "/reports/workload", icon: ActivitySquare },
       { name: "Calendar of Activities", href: "/calendar", icon: CalendarDays },
       { name: "Projects", href: "/projects", icon: FolderKanban },
-      { name: "CRVS", href: "/projects?category=CIVIL_REGISTRATION_VITAL_STATISTICS", basePath: "/projects", icon: BookOpen }
+      { name: "CRVS", href: "/reports/crvs", icon: BookOpen }
     ]
   },
   {
@@ -65,7 +65,7 @@ export const navigationGroups: NavGroup[] = [
   {
     label: "Reports",
     items: [
-      { name: "Administrative Reports", href: "/projects?category=ADMINISTRATIVE_ACCOUNTING_REPORTS", basePath: "/projects", icon: FileText }
+      { name: "Administrative Reports", href: "/reports/administrative", icon: FileText }
     ]
   },
   {
