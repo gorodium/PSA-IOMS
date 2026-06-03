@@ -13,6 +13,7 @@ import {
   type ChatSnapshot
 } from "@/app/(app)/chat/actions";
 import { ChatMessageItem } from "./ChatMessageItem";
+import { ChatImageLightbox } from "./ChatImageLightbox";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
@@ -43,39 +44,57 @@ function formatFileSize(size: number) {
 }
 
 function AttachmentPreview({ attachment }: { attachment: { fileName: string; fileUrl: string; mimeType: string; fileSize: number; }}) {
+  const [lightboxOpen, setLightboxOpen] = useState(false);
   const isImage = attachment.mimeType.startsWith("image/");
   const isPdf = attachment.mimeType === "application/pdf";
   const Icon = isImage ? ImageIcon : FileText;
 
+  // Serve uploads via the new dynamic API route instead of Next.js static asset folder
+  const safeUrl = attachment.fileUrl.startsWith('/uploads/') 
+    ? attachment.fileUrl.replace('/uploads/', '/api/file/') 
+    : attachment.fileUrl;
+
   return (
-    <div className="mt-1.5 overflow-hidden rounded-md border bg-background text-xs shadow-sm transition-all">
-      {isImage && (
-        <a href={attachment.fileUrl} target="_blank" rel="noreferrer" className="block border-b bg-muted/30">
-          <Image
-            src={attachment.fileUrl}
-            alt={attachment.fileName}
-            width={760}
-            height={428}
-            unoptimized
-            className="max-h-32 w-full object-contain"
-          />
+    <>
+      <div className="mt-1.5 overflow-hidden rounded-md border bg-background text-xs shadow-sm transition-all">
+        {isImage && (
+          <button type="button" onClick={() => setLightboxOpen(true)} className="block border-b bg-muted/30 w-full cursor-zoom-in relative">
+            <Image
+              src={safeUrl}
+              alt={attachment.fileName}
+              width={760}
+              height={428}
+              unoptimized
+              className="max-h-32 w-full object-contain"
+            />
+          </button>
+        )}
+        {isPdf && (
+          <div className="border-b bg-white">
+            <iframe src={`${safeUrl}#toolbar=0&navpanes=0`} title={attachment.fileName} className="h-32 w-full bg-white" />
+          </div>
+        )}
+        <a href={safeUrl} target="_blank" rel="noreferrer" className="flex items-center gap-2 p-2 hover:bg-muted/50 transition">
+          <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded bg-primary/10 text-primary">
+            <Icon className="h-3.5 w-3.5" />
+          </div>
+          <div className="flex-1 truncate font-medium text-left">
+            {attachment.fileName}
+          </div>
+          <div className="text-muted-foreground">
+            {formatFileSize(attachment.fileSize)}
+          </div>
         </a>
+      </div>
+      {isImage && (
+        <ChatImageLightbox 
+          isOpen={lightboxOpen} 
+          onClose={() => setLightboxOpen(false)} 
+          imageUrl={safeUrl} 
+          altText={attachment.fileName} 
+        />
       )}
-      {isPdf && (
-        <div className="border-b bg-white">
-          <iframe src={`${attachment.fileUrl}#toolbar=0&navpanes=0`} title={attachment.fileName} className="h-32 w-full bg-white" />
-        </div>
-      )}
-      <a href={attachment.fileUrl} target="_blank" rel="noreferrer" className="flex items-center gap-2 p-2 hover:bg-muted/50 transition">
-        <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded bg-primary/10 text-primary">
-          <Icon className="h-3 w-3" />
-        </div>
-        <span className="min-w-0 flex-1 flex flex-col">
-          <span className="truncate font-medium">{attachment.fileName}</span>
-          <span className="text-[10px] text-muted-foreground">{formatFileSize(attachment.fileSize)}</span>
-        </span>
-      </a>
-    </div>
+    </>
   );
 }
 

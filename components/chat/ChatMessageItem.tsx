@@ -36,7 +36,7 @@ function parseCustomEmojis(text: string, customEmojis: CustomEmojiType[]) {
         return (
           <Image
             key={i}
-            src={emoji.imageUrl}
+            src={emoji.imageUrl.startsWith('/uploads/') ? emoji.imageUrl.replace('/uploads/', '/api/file/') : emoji.imageUrl}
             alt={part}
             title={part}
             width={24}
@@ -151,7 +151,7 @@ export function ChatMessageItem({
                 )}
               >
                 {rg.customUrl ? (
-                  <Image src={rg.customUrl} alt={rg.customName || "emoji"} width={14} height={14} unoptimized className="object-contain" />
+                  <Image src={rg.customUrl.startsWith('/uploads/') ? rg.customUrl.replace('/uploads/', '/api/file/') : rg.customUrl} alt={rg.customName || "emoji"} width={14} height={14} unoptimized className="object-contain" />
                 ) : (
                   <span>{rg.emoji}</span>
                 )}
@@ -193,7 +193,7 @@ export function ChatMessageItem({
                     <div className="grid grid-cols-5 gap-1">
                       {customEmojis.map(ce => (
                         <button key={ce.id} onClick={() => handleToggleReaction(null, ce.id)} title={`:${ce.name}:`} className="flex h-9 items-center justify-center rounded hover:bg-muted transition-transform hover:scale-110 p-1">
-                          <Image src={ce.imageUrl} alt={ce.name} width={24} height={24} unoptimized className="object-contain max-h-full" />
+                          <Image src={ce.imageUrl.startsWith('/uploads/') ? ce.imageUrl.replace('/uploads/', '/api/file/') : ce.imageUrl} alt={ce.name} width={24} height={24} unoptimized className="object-contain max-h-full" />
                         </button>
                       ))}
                     </div>
