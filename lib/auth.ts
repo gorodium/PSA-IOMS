@@ -9,7 +9,7 @@ import { db } from "@/lib/db";
 import type { UserRole } from "@prisma/client";
 
 const sessionCookieName = "ioms_session";
-const sessionMaxAgeSeconds = 60 * 60 * 8;
+const sessionMaxAgeSeconds = 60 * 60 * 24 * 365; // 1 year
 
 type SessionPayload = {
   userId: string;
