@@ -155,6 +155,27 @@ export function FullPageChat() {
   const [searchQuery, setSearchQuery] = useState("");
   const [messageBody, setMessageBody] = useState("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+      setIsDragging(false);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      setSelectedFile(e.dataTransfer.files[0]);
+    }
+  };
   const [showEmoticons, setShowEmoticons] = useState(false);
   const [error, setError] = useState("");
   const [isPending, startTransition] = useTransition();
@@ -331,7 +352,20 @@ export function FullPageChat() {
       </aside>
 
       {/* CENTER MAIN CHAT */}
-      <section className="flex min-w-0 flex-1 flex-col bg-background">
+      <section 
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+        className="relative flex min-w-0 flex-1 flex-col bg-background"
+      >
+        {isDragging && (
+          <div className="absolute inset-0 z-50 flex items-center justify-center bg-background/90 backdrop-blur-sm border-2 border-dashed border-primary m-4 rounded-xl">
+            <div className="flex flex-col items-center text-primary pointer-events-none">
+              <Paperclip className="h-10 w-10 mb-2 animate-bounce" />
+              <p className="font-medium">Drop file to attach</p>
+            </div>
+          </div>
+        )}
         <header className="flex h-16 shrink-0 items-center justify-between border-b px-4 lg:px-6 shadow-sm z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
