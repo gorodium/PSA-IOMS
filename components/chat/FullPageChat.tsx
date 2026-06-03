@@ -42,34 +42,41 @@ function AttachmentPreview({ attachment }: { attachment: { fileName: string; fil
   const isPdf = attachment.mimeType === "application/pdf";
   const Icon = isImage ? ImageIcon : FileText;
 
+  // Serve uploads via the dynamic API route to fix caching issues in prod
+  const safeUrl = attachment.fileUrl.startsWith('/uploads/') 
+    ? attachment.fileUrl.replace('/uploads/', '/api/file/') 
+    : attachment.fileUrl;
+
   return (
-    <div className="mt-2 overflow-hidden rounded-lg border bg-background text-xs shadow-sm transition-all hover:shadow-md max-w-sm">
+    <div className={`mt-2 overflow-hidden transition-all max-w-sm ${isImage ? 'rounded-lg' : 'rounded-lg border bg-background text-xs shadow-sm hover:shadow-md'}`}>
       {isImage && (
-        <a href={attachment.fileUrl} target="_blank" rel="noreferrer" className="block border-b bg-muted/30">
+        <a href={safeUrl} target="_blank" rel="noreferrer" className="block relative">
           <Image
-            src={attachment.fileUrl}
+            src={safeUrl}
             alt={attachment.fileName}
             width={760}
             height={428}
             unoptimized
-            className="max-h-64 w-full object-contain"
+            className="max-h-[300px] w-auto max-w-full rounded-lg object-contain"
           />
         </a>
       )}
       {isPdf && (
         <div className="border-b bg-white">
-          <iframe src={`${attachment.fileUrl}#toolbar=0&navpanes=0`} title={attachment.fileName} className="h-64 w-full bg-white" />
+          <iframe src={`${safeUrl}#toolbar=0&navpanes=0`} title={attachment.fileName} className="h-64 w-full bg-white" />
         </div>
       )}
-      <a href={attachment.fileUrl} target="_blank" rel="noreferrer" className="flex items-center gap-3 p-3 transition hover:bg-muted/50">
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
-          <Icon className="h-4 w-4" />
-        </div>
-        <span className="min-w-0 flex-1">
-          <span className="block truncate font-medium">{attachment.fileName}</span>
-          <span className="text-muted-foreground">{formatFileSize(attachment.fileSize)}</span>
-        </span>
-      </a>
+      {!isImage && (
+        <a href={safeUrl} target="_blank" rel="noreferrer" className="flex items-center gap-3 p-3 transition hover:bg-muted/50">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+            <Icon className="h-4 w-4" />
+          </div>
+          <span className="min-w-0 flex-1">
+            <span className="block truncate font-medium">{attachment.fileName}</span>
+            <span className="text-muted-foreground">{formatFileSize(attachment.fileSize)}</span>
+          </span>
+        </a>
+      )}
     </div>
   );
 }
@@ -404,7 +411,9 @@ export function FullPageChat() {
                         <p className="italic text-muted-foreground opacity-75">{message.senderName} unsent a message</p>
                       ) : (
                         <>
-                          <p className="whitespace-pre-wrap break-words leading-relaxed">{message.body}</p>
+                          {(!message.attachments?.some(a => a.mimeType.startsWith('image/') && message.body === `Attached ${a.fileName}`)) && (
+                            <p className="whitespace-pre-wrap break-words leading-relaxed">{message.body}</p>
+                          )}
                           {message.attachments.map((attachment) => <AttachmentPreview key={attachment.id} attachment={attachment} />)}
                           {metadata && <RequestMessageCard metadata={metadata} />}
                         </>
@@ -492,7 +501,7 @@ export function FullPageChat() {
               }}
               disabled={!selectedChannelId}
               placeholder={selectedChannelId ? `Message ${selectedChannel?.name}...` : "No channel selected"}
-              className="min-h-[60px] w-full resize-none border-0 bg-transparent py-3 pl-4 pr-32 focus-visible:ring-0 text-sm"
+              className="min-h-[60px] w-full resize-none border-0 bg-transparent py-3 pl-4 pr-32 text-foreground dark:text-gray-100 focus-visible:ring-0 text-sm"
             />
             
             <div className="absolute bottom-2 right-2 flex items-center gap-1">
