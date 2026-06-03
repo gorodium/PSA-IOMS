@@ -14,47 +14,55 @@ export function AppHeader({ user }: { user: AuthUser | null }) {
   const [open, setOpen] = useState(false);
 
   return (
-    <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/95 backdrop-blur dark:border-slate-800 dark:bg-slate-950/95 shadow-sm">
+    <header className="fixed top-0 left-0 right-0 z-40 border-b border-slate-200 bg-white/95 backdrop-blur dark:border-slate-800 dark:bg-slate-950/95 shadow-sm">
       <div className="flex h-16 items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
         
-        {/* Mobile Sidebar Trigger & Title */}
-        <div className="flex items-center gap-4 lg:hidden min-w-0">
-          <Sheet open={open} onOpenChange={setOpen}>
-            <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" className="shrink-0 -ml-2 text-slate-700 dark:text-slate-300">
-                <Menu className="h-5 w-5" />
-                <span className="sr-only">Toggle navigation menu</span>
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="left" className="w-[280px] p-0 flex flex-col">
-              <div className="flex h-16 shrink-0 items-center gap-3 px-6 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950">
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded bg-transparent">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src="/logo.svg" alt="PSA Logo" className="h-full w-full object-contain" />
+        {/* Left Side: Mobile Menu + Logo & Title */}
+        <div className="flex items-center gap-2 sm:gap-4 min-w-0 flex-1">
+          <div className="lg:hidden shrink-0">
+            <Sheet open={open} onOpenChange={setOpen}>
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="icon" className="-ml-2 text-slate-700 dark:text-slate-300">
+                  <Menu className="h-5 w-5" />
+                  <span className="sr-only">Toggle navigation menu</span>
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="left" className="w-[280px] p-0 flex flex-col">
+                <div className="flex h-16 shrink-0 items-center gap-3 px-6 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950">
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded bg-transparent">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src="/logo.svg" alt="PSA Logo" className="h-full w-full object-contain" />
+                  </div>
+                  <div className="flex flex-col justify-center">
+                    <p className="text-sm font-bold text-slate-900 dark:text-slate-50 leading-tight">PSA Misamis Oriental</p>
+                    <p className="text-[10px] font-medium uppercase tracking-widest text-primary/80 dark:text-primary-foreground/70">IOMS</p>
+                  </div>
                 </div>
-                <div className="flex flex-col justify-center">
-                  <p className="text-sm font-bold text-slate-900 dark:text-slate-50 leading-tight">PSA Misamis Oriental IOMS</p>
-                  <p className="text-[10px] font-medium uppercase tracking-widest text-primary/80 dark:text-primary-foreground/70">Internal Operations Platform</p>
-                </div>
-              </div>
-              <SidebarNav user={user} onNavigate={() => setOpen(false)} />
-            </SheetContent>
-          </Sheet>
-          <div className="min-w-0 flex-1">
-            <p className="text-base font-bold text-slate-950 dark:text-slate-50 leading-tight truncate">
-              PSA Misamis Oriental IOMS
-            </p>
+                <SidebarNav user={user} onNavigate={() => setOpen(false)} />
+              </SheetContent>
+            </Sheet>
           </div>
-        </div>
 
-        {/* Desktop Title */}
-        <div className="hidden lg:flex flex-col min-w-0 flex-1">
-          <p className="text-base md:text-lg font-bold text-slate-900 dark:text-slate-100 leading-tight truncate tracking-tight">
-            PSA Misamis Oriental IOMS
-          </p>
-          <p className="text-xs font-medium text-muted-foreground truncate mt-0.5">
-            Internal Operations Management Platform
-          </p>
+          <Link href="/dashboard" className="flex items-center gap-3 shrink-0 min-w-0">
+            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded bg-transparent">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/logo.svg" alt="PSA Logo" className="h-full w-full object-contain" />
+            </div>
+            <div className="hidden sm:flex flex-col min-w-0">
+              <p className="text-base md:text-lg font-bold text-slate-900 dark:text-slate-100 leading-tight truncate tracking-tight">
+                PSA Misamis Oriental IOMS
+              </p>
+              <p className="text-xs font-medium text-muted-foreground truncate mt-0.5">
+                Internal Operations Management Platform
+              </p>
+            </div>
+            {/* Mobile Title */}
+            <div className="flex sm:hidden flex-col min-w-0">
+              <p className="text-sm font-bold text-slate-900 dark:text-slate-100 leading-tight truncate">
+                PSA Misamis Oriental
+              </p>
+            </div>
+          </Link>
         </div>
 
         {/* Right Actions */}

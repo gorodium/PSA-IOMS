@@ -91,8 +91,8 @@ export function MonitoringMiddlePane({ activeProjects, isSuperAdmin }: Props) {
     return activeProjects;
   }, [filter, activeProjects, metrics]);
   return (
-    <div className="flex-1 flex flex-col h-full overflow-hidden">
-      <div className="sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 pb-4 shrink-0">
+    <div className="flex-1 flex flex-col md:h-full md:overflow-hidden">
+      <div className="sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 pb-4 shrink-0 border-b border-slate-200 dark:border-slate-800/60">
         <div className="flex items-center justify-between mb-4 mt-2">
           <div className="flex items-center gap-3">
             <h1 className="text-2xl font-semibold tracking-tight">Monitoring Board</h1>
@@ -103,39 +103,45 @@ export function MonitoringMiddlePane({ activeProjects, isSuperAdmin }: Props) {
             )}
           </div>
         </div>
-        <div className="grid gap-4 md:grid-cols-3 overflow-x-auto pb-2 scrollbar-thin">
-          <MetricCard 
-             title="Due Today" 
-             description="Deliverables due today"
-             value={metrics.dueTodayCount} 
-             icon={Clock} 
-             colorClass={{ bg: "bg-amber-100 dark:bg-amber-500/20", text: "text-amber-600 dark:text-amber-400" }} 
-             onClick={() => setFilter(f => f === "DUE_TODAY" ? "ALL" : "DUE_TODAY")}
-             active={filter === "DUE_TODAY"}
-          />
-          <MetricCard 
-             title="Due in 7 Days" 
-             description="Upcoming deadlines"
-             value={metrics.dueSoonCount} 
-             icon={CalendarClock} 
-             colorClass={{ bg: "bg-blue-100 dark:bg-blue-500/20", text: "text-blue-600 dark:text-blue-400" }} 
-             onClick={() => setFilter(f => f === "DUE_SOON" ? "ALL" : "DUE_SOON")}
-             active={filter === "DUE_SOON"}
-          />
-          <MetricCard 
-             title="Overdue" 
-             description="Past deadline, unsubmitted"
-             value={metrics.overdueCount} 
-             icon={AlertTriangle} 
-             colorClass={{ bg: "bg-red-100 dark:bg-red-500/20", text: "text-red-600 dark:text-red-400" }} 
-             onClick={() => setFilter(f => f === "OVERDUE" ? "ALL" : "OVERDUE")}
-             active={filter === "OVERDUE"}
-          />
+        <div className="flex overflow-x-auto snap-x snap-mandatory gap-4 pb-2 md:grid md:grid-cols-3 scrollbar-none md:scrollbar-thin">
+          <div className="w-[85vw] sm:w-[300px] shrink-0 snap-center md:w-auto md:shrink">
+            <MetricCard 
+               title="Due Today" 
+               description="Deliverables due today"
+               value={metrics.dueTodayCount} 
+               icon={Clock} 
+               colorClass={{ bg: "bg-amber-100 dark:bg-amber-500/20", text: "text-amber-600 dark:text-amber-400" }} 
+               onClick={() => setFilter(f => f === "DUE_TODAY" ? "ALL" : "DUE_TODAY")}
+               active={filter === "DUE_TODAY"}
+            />
+          </div>
+          <div className="w-[85vw] sm:w-[300px] shrink-0 snap-center md:w-auto md:shrink">
+            <MetricCard 
+               title="Due in 7 Days" 
+               description="Upcoming deadlines"
+               value={metrics.dueSoonCount} 
+               icon={CalendarClock} 
+               colorClass={{ bg: "bg-blue-100 dark:bg-blue-500/20", text: "text-blue-600 dark:text-blue-400" }} 
+               onClick={() => setFilter(f => f === "DUE_SOON" ? "ALL" : "DUE_SOON")}
+               active={filter === "DUE_SOON"}
+            />
+          </div>
+          <div className="w-[85vw] sm:w-[300px] shrink-0 snap-center md:w-auto md:shrink">
+            <MetricCard 
+               title="Overdue" 
+               description="Past deadline, unsubmitted"
+               value={metrics.overdueCount} 
+               icon={AlertTriangle} 
+               colorClass={{ bg: "bg-red-100 dark:bg-red-500/20", text: "text-red-600 dark:text-red-400" }} 
+               onClick={() => setFilter(f => f === "OVERDUE" ? "ALL" : "OVERDUE")}
+               active={filter === "OVERDUE"}
+            />
+          </div>
         </div>
       </div>
 
       {/* Scrollable Project Summaries */}
-      <div className="flex-1 overflow-y-auto pr-2 pb-10 space-y-6">
+      <div className="flex-1 md:overflow-y-auto pr-0 md:pr-2 pt-6 pb-10 space-y-6">
         {displayedProjects.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-40 text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-[#1C212E] rounded-xl border border-slate-200 dark:border-white/5">
             <FolderKanban className="w-8 h-8 mb-3 opacity-20" />

@@ -67,6 +67,7 @@ enum ActivityType {
   VEHICLE
   HOLIDAY
   ROOM
+  TRAINING
 }
 
 enum VehicleRequestStatus {
@@ -128,11 +129,26 @@ enum ChatMessageType {
   REQUEST_STATUS_UPDATE
 }
 
+enum LocationType {
+  OFFICE
+  OUTSIDE_OFFICE
+  CUSTOM
+  UNKNOWN
+}
+
+enum MatchStatus {
+  MATCHED
+  UNMATCHED
+  CUSTOM
+  MULTIPLE_MATCHES
+}
+
 model User {
   id                       String               @id @default(cuid())
   name                     String
   username                 String               @unique
   email                    String?              @unique
+  photoUrl                 String?
   mustChangePassword       Boolean              @default(true)
   passwordHash             String
   role                     UserRole             @default(VIEWER)
@@ -162,6 +178,8 @@ model User {
   chatChannelMemberships   ChatChannelMember[]
   sentChatMessages         ChatMessage[]        @relation("ChatMessageSender")
   chatMessageReads         ChatMessageRead[]
+  createdCustomEmojis      CustomEmoji[]        @relation("CustomEmojiCreatedBy")
+  chatReactions            ChatReaction[]       @relation("UserChatReactions")
   createdPdfTemplates      PdfTemplate[]        @relation("PdfTemplateCreatedBy")
 
   @@index([role])
@@ -180,6 +198,7 @@ model Personnel {
   isActive                 Boolean                        @default(true)
   archiveReason            String?
   archiveDate              DateTime?
+  photoUrl                 String?
   locationStatus           String                         @default("office") // "office" or "on_travel"
   travelDetails            String?
   travelDestination        String?
@@ -192,6 +211,7 @@ model Personnel {
   assignedTasks            ProjectTask[]
   activities               CalendarActivity[]
   involvedActivities       CalendarActivity[]             @relation("ActivityInvolvedPersonnel")
+  specialOrderInvolvements SpecialOrderPerson[]
   vehicleRequests          VehicleRequest[]               @relation("VehicleRequestRequester")
   vehicleRequestPassengers VehicleRequestPassenger[]      @relation("VehicleRequestPassengerPersonnel")
   roomReservations         RoomReservation[]              @relation("RoomReservationRequester")
@@ -409,6 +429,7 @@ model CanvasTemplate {
 model CalendarActivity {
   id                  String               @id @default(cuid())
   type                ActivityType
+  additionalTypes     ActivityType[]       @default([])
   title               String
   soNumber            String?
   soFileUrl           String?
@@ -423,11 +444,56 @@ model CalendarActivity {
   vehicleRequests     VehicleRequest[]
   roomReservations    RoomReservation[]
   convocationPrograms ConvocationProgram[]
+  specialOrders       SpecialOrder[]
   createdAt           DateTime             @default(now())
   updatedAt           DateTime             @updatedAt
 
   @@index([type])
   @@index([startDate])
+}
+
+model SpecialOrder {
+  id                 String             @id @default(cuid())
+  referenceNo        String?
+  soNumber           String?
+  assignedDate       DateTime?
+  activityDate       DateTime?
+  activityDateString String?
+  purpose            String?
+  destination        String?
+  remarks            String?
+  status             String?
+  locationType       LocationType       @default(UNKNOWN)
+  
+  calendarActivityId String?
+  calendarActivity   CalendarActivity?  @relation(fields: [calendarActivityId], references: [id], onDelete: SetNull)
+  
+  people             SpecialOrderPerson[]
+  
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  @@unique([referenceNo, soNumber, purpose])
+  @@index([activityDate])
+  @@index([locationType])
+}
+
+model SpecialOrderPerson {
+  id                 String          @id @default(cuid())
+  specialOrderId     String
+  originalName       String
+  normalizedName     String
+  personnelId        String?
+  matchStatus        MatchStatus     @default(UNMATCHED)
+  customLabel        String?
+  isTravelTagged     Boolean         @default(false)
+  
+  specialOrder       SpecialOrder    @relation(fields: [specialOrderId], references: [id], onDelete: Cascade)
+  personnel          Personnel?      @relation(fields: [personnelId], references: [id], onDelete: SetNull)
+
+  @@index([specialOrderId])
+  @@index([personnelId])
+  @@index([matchStatus])
 }
 
 model Vehicle {
@@ -707,6 +773,7 @@ model ChatMessage {
   sender            User?             @relation("ChatMessageSender", fields: [senderUserId], references: [id], onDelete: SetNull)
   reads             ChatMessageRead[]
   attachments       ChatAttachment[]
+  reactions         ChatReaction[]    @relation("ChatMessageReactions")
   createdAt         DateTime          @default(now())
   updatedAt         DateTime          @updatedAt
 
@@ -742,6 +809,34 @@ model ChatMessageRead {
   @@unique([messageId, userId])
   @@index([userId])
   @@index([readAt])
+}
+
+model CustomEmoji {
+  id          String         @id @default(cuid())
+  name        String         @unique
+  imageUrl    String
+  createdById String?
+  createdBy   User?          @relation("CustomEmojiCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt   DateTime       @default(now())
+  reactions   ChatReaction[]
+
+  @@index([name])
+}
+
+model ChatReaction {
+  id            String       @id @default(cuid())
+  messageId     String
+  userId        String
+  emoji         String?
+  customEmojiId String?
+  createdAt     DateTime     @default(now())
+  message       ChatMessage  @relation("ChatMessageReactions", fields: [messageId], references: [id], onDelete: Cascade)
+  user          User         @relation("UserChatReactions", fields: [userId], references: [id], onDelete: Cascade)
+  customEmoji   CustomEmoji? @relation(fields: [customEmojiId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, userId, emoji, customEmojiId])
+  @@index([messageId])
+  @@index([customEmojiId])
 }
 
 model PdfTemplate {

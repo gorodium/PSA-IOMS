@@ -231,7 +231,7 @@ export default async function ProjectsPage({ searchParams }: ProjectsPageProps) 
               <Search className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-muted-foreground" aria-hidden="true" />
               <Input name="search" placeholder="Search project title, category, focal person, frequency, or status" defaultValue={params?.search ?? ""} className="pl-9 w-full" />
             </div>
-            <div className="grid grid-cols-2 md:flex md:flex-row gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:flex lg:flex-row gap-3">
               <Select name="status" defaultValue={params?.status ?? "ALL"} aria-label="Status filter">
                 <option value="ALL">All Status</option>
                 {Object.values(ProjectStatus).map((status) => (

@@ -7,6 +7,8 @@ import Holidays from "date-holidays";
 import { writeFile, mkdir } from "fs/promises";
 import path from "path";
 
+import { revalidatePath } from "next/cache";
+
 export async function getCalendarActivitiesAction(date: Date, view: "day" | "week" | "month") {
   let start, end;
   
@@ -24,24 +26,26 @@ export async function getCalendarActivitiesAction(date: Date, view: "day" | "wee
   const activities = await db.calendarActivity.findMany({
     where: {
       startDate: {
-        gte: start,
         lte: end
       },
-      NOT: [
+      AND: [
         {
-          description: {
-            contains: "[IOMS_HIDE_FROM_CALENDAR]"
-          }
+          OR: [
+            { endDate: null },
+            { endDate: { gte: start } }
+          ]
         },
         {
-          description: {
-            contains: "[IOMS_HIDE_ROOM_FROM_CALENDAR]"
-          }
-        },
-        {
-          description: {
-            contains: "[IOMS_HIDE_CONVOCATION_FROM_CALENDAR]"
-          }
+          OR: [
+            { description: null },
+            {
+              AND: [
+                { NOT: { description: { contains: "[IOMS_HIDE_FROM_CALENDAR]" } } },
+                { NOT: { description: { contains: "[IOMS_HIDE_ROOM_FROM_CALENDAR]" } } },
+                { NOT: { description: { contains: "[IOMS_HIDE_CONVOCATION_FROM_CALENDAR]" } } }
+              ]
+            }
+          ]
         }
       ]
     },
@@ -86,35 +90,31 @@ export async function getCalendarActivitiesAction(date: Date, view: "day" | "wee
   );
 }
 
-export async function createCalendarActivityAction(formData: FormData) {
-  const type = formData.get("type") as ActivityType;
-  const title = formData.get("title") as string;
-  const soNumber = formData.get("soNumber") as string | null;
-  const description = formData.get("description") as string | null;
-  const startDateStr = formData.get("startDate") as string;
-  const endDateStr = formData.get("endDate") as string | null;
-  const location = formData.get("location") as string | null;
-  const personnelId = formData.get("personnelId") as string | null;
-  
-  // involvedPersonnelIds might be sent as a JSON array string if there are multiple
-  const involvedPersonnelStr = formData.get("involvedPersonnelIds") as string | null;
-  let involvedPersonnelIds: string[] = [];
-  if (involvedPersonnelStr) {
-    try {
-      involvedPersonnelIds = JSON.parse(involvedPersonnelStr);
-    } catch {
-      // fallback if it's a single comma-separated string
-      involvedPersonnelIds = involvedPersonnelStr.split(",").map(s => s.trim()).filter(Boolean);
-    }
-  }
+export type ActivityPayload = {
+  id?: string;
+  type: ActivityType;
+  additionalTypes?: ActivityType[];
+  title: string;
+  soNumber?: string | null;
+  description?: string | null;
+  startDate: string;
+  endDate?: string | null;
+  location?: string | null;
+  personnelId?: string | null;
+  involvedPersonnelIds?: string[];
+  soFileBase64?: string | null;
+  soFileName?: string | null;
+};
 
-  const soFile = formData.get("soFile") as File | null;
+export async function createCalendarActivityAction(payload: ActivityPayload) {
+  const { type, additionalTypes = [], title, soNumber, description, startDate: startDateStr, endDate: endDateStr, location, personnelId, involvedPersonnelIds = [], soFileBase64, soFileName } = payload;
+  
   let soFileUrl: string | undefined;
 
-  if (soFile && soFile.size > 0) {
-    const bytes = await soFile.arrayBuffer();
-    const buffer = Buffer.from(bytes);
-    const fileName = `${Date.now()}-${soFile.name.replace(/[^a-zA-Z0-9.-]/g, "_")}`;
+  if (soFileBase64 && soFileName) {
+    const base64Data = soFileBase64.replace(/^data:.*,/, "");
+    const buffer = Buffer.from(base64Data, "base64");
+    const fileName = `${Date.now()}-${soFileName.replace(/[^a-zA-Z0-9.-]/g, "_")}`;
     const uploadDir = path.join(process.cwd(), "public/uploads/so");
     await mkdir(uploadDir, { recursive: true });
     await writeFile(path.join(uploadDir, fileName), buffer);
@@ -127,6 +127,7 @@ export async function createCalendarActivityAction(formData: FormData) {
   await db.calendarActivity.create({
     data: {
       type,
+      additionalTypes,
       title,
       soNumber,
       description,
@@ -140,38 +141,21 @@ export async function createCalendarActivityAction(formData: FormData) {
       }
     }
   });
+
+  revalidatePath("/calendar");
 }
 
-export async function updateCalendarActivityAction(formData: FormData) {
-  const id = formData.get("id") as string;
+export async function updateCalendarActivityAction(payload: ActivityPayload) {
+  const { id, type, additionalTypes = [], title, soNumber, description, startDate: startDateStr, endDate: endDateStr, location, personnelId, involvedPersonnelIds = [], soFileBase64, soFileName } = payload;
+  
   if (!id) throw new Error("Activity ID is required");
 
-  const type = formData.get("type") as ActivityType;
-  const title = formData.get("title") as string;
-  const soNumber = formData.get("soNumber") as string | null;
-  const description = formData.get("description") as string | null;
-  const startDateStr = formData.get("startDate") as string;
-  const endDateStr = formData.get("endDate") as string | null;
-  const location = formData.get("location") as string | null;
-  const personnelId = formData.get("personnelId") as string | null;
-  
-  const involvedPersonnelStr = formData.get("involvedPersonnelIds") as string | null;
-  let involvedPersonnelIds: string[] = [];
-  if (involvedPersonnelStr) {
-    try {
-      involvedPersonnelIds = JSON.parse(involvedPersonnelStr);
-    } catch {
-      involvedPersonnelIds = involvedPersonnelStr.split(",").map(s => s.trim()).filter(Boolean);
-    }
-  }
-
-  const soFile = formData.get("soFile") as File | null;
   let soFileUrl: string | undefined;
 
-  if (soFile && soFile.size > 0) {
-    const bytes = await soFile.arrayBuffer();
-    const buffer = Buffer.from(bytes);
-    const fileName = `${Date.now()}-${soFile.name.replace(/[^a-zA-Z0-9.-]/g, "_")}`;
+  if (soFileBase64 && soFileName) {
+    const base64Data = soFileBase64.replace(/^data:.*,/, "");
+    const buffer = Buffer.from(base64Data, "base64");
+    const fileName = `${Date.now()}-${soFileName.replace(/[^a-zA-Z0-9.-]/g, "_")}`;
     const uploadDir = path.join(process.cwd(), "public/uploads/so");
     await mkdir(uploadDir, { recursive: true });
     await writeFile(path.join(uploadDir, fileName), buffer);
@@ -185,6 +169,7 @@ export async function updateCalendarActivityAction(formData: FormData) {
     where: { id },
     data: {
       type,
+      additionalTypes,
       title,
       soNumber,
       description,
@@ -198,6 +183,8 @@ export async function updateCalendarActivityAction(formData: FormData) {
       }
     }
   });
+
+  revalidatePath("/calendar");
 }
 
 export async function deleteCalendarActivityAction(id: string) {
@@ -205,4 +192,6 @@ export async function deleteCalendarActivityAction(id: string) {
   await db.calendarActivity.delete({
     where: { id }
   });
+
+  revalidatePath("/calendar");
 }

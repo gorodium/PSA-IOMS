@@ -6,8 +6,11 @@ import "./globals.css";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "PSA - Misamis Oriental Operations Monitoring",
-  description: "Integrated Operations Monitoring System"
+  title: {
+    template: "%s | PSA MisOr IOMS",
+    default: "PSA MisOr IOMS"
+  },
+  description: "Integrated Operations Management System"
 };
 
 export default function RootLayout({

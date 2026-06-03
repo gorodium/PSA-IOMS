@@ -53,6 +53,22 @@ const settingsCards = [
     icon: Info,
     resource: "settings" as const,
     superAdminOnly: false
+  },
+  {
+    title: "My Profile (System Administrator)",
+    description: "Update your system name and profile picture.",
+    href: "/settings/profile",
+    icon: Users,
+    resource: "settings" as const,
+    superAdminOnly: true
+  },
+  {
+    title: "Custom Emojis",
+    description: "Upload animated GIFs or images for Discord-style custom chat emojis.",
+    href: "/settings/emojis",
+    icon: MessageSquare,
+    resource: "settings" as const,
+    superAdminOnly: true
   }
 ];
 

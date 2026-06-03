@@ -79,9 +79,9 @@ export default async function DashboardPage() {
   const monitoringProjects = projects as MonitoringProject[];
 
   return (
-    <div className="-mx-4 -my-6 sm:-mx-6 lg:-mx-8 flex h-[calc(100vh-64px)] overflow-hidden bg-background">
+    <div className="-mx-4 -my-6 sm:-mx-6 lg:-mx-8 flex flex-col md:flex-row min-h-[calc(100vh-64px)] md:h-[calc(100vh-64px)] md:overflow-hidden bg-background">
       {/* Middle Pane */}
-      <div className="flex-1 min-w-0 px-4 sm:px-6 lg:px-8 overflow-hidden flex flex-col pt-6">
+      <div className="flex-1 min-w-0 px-4 sm:px-6 lg:px-8 md:overflow-hidden flex flex-col pt-6">
         <MonitoringMiddlePane 
           activeProjects={monitoringProjects}
           isSuperAdmin={isSuperAdmin}
@@ -89,7 +89,7 @@ export default async function DashboardPage() {
       </div>
 
       {/* Right Pane */}
-      <div className="hidden xl:block overflow-hidden h-full">
+      <div className="w-full xl:w-auto xl:overflow-hidden md:h-full shrink-0">
         <MonitoringRightPane />
       </div>
     </div>

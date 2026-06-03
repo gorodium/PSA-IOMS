@@ -65,7 +65,8 @@ export const navigationGroups: NavGroup[] = [
   {
     label: "Reports",
     items: [
-      { name: "Administrative Reports", href: "/reports/administrative", icon: FileText }
+      { name: "Administrative Reports", href: "/reports/administrative", icon: FileText },
+      { name: "Special Orders", href: "/reports/special-order", icon: ClipboardList }
     ]
   },
   {
@@ -129,18 +130,7 @@ export function SidebarNav({ user, onNavigate }: { user: AuthUser | null, onNavi
 
 export function AppSidebar({ user }: { user: AuthUser | null }) {
   return (
-    <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 border-r border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-950 lg:flex lg:flex-col">
-      <div className="flex h-16 shrink-0 items-center justify-center border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950">
-        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded bg-transparent">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src="/logo.svg"
-            alt="PSA Logo"
-            className="h-full w-full object-contain"
-          />
-        </div>
-      </div>
-
+    <aside className="fixed top-16 bottom-0 left-0 z-30 hidden w-64 border-r border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-950 lg:flex lg:flex-col">
       <SidebarNav user={user} />
 
       <div className="border-t border-slate-200 p-4 dark:border-slate-800 bg-white dark:bg-slate-950">
@@ -153,7 +143,7 @@ export function AppSidebar({ user }: { user: AuthUser | null }) {
               {user?.name ?? "Public Viewer"}
             </p>
             <p className="truncate text-xs font-medium text-muted-foreground">
-              {user?.role.replaceAll("_", " ") ?? "Read-only access"}
+              {user?.role === "SUPER_ADMIN" ? "System Administrator" : (user?.role.replaceAll("_", " ") ?? "Read-only access")}
             </p>
           </div>
         </div>

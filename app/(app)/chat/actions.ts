@@ -43,9 +43,11 @@ export type ChatSnapshot = {
     channelId: string;
     isOwnMessage: boolean;
     senderName: string;
+    senderPhotoUrl: string | null;
     messageType: string;
     body: string;
     metadata: unknown;
+    isUnsent: boolean;
     attachments: Array<{
       id: string;
       fileName: string;
@@ -55,7 +57,23 @@ export type ChatSnapshot = {
     }>;
     createdAt: string;
     edited: boolean;
+    reactions: Array<{
+      id: string;
+      userId: string;
+      userName: string;
+      emoji: string | null;
+      customEmojiId: string | null;
+      customEmojiUrl: string | null;
+      customEmojiName: string | null;
+    }>;
   }>;
+  customEmojis: Array<{
+    id: string;
+    name: string;
+    imageUrl: string;
+  }>;
+  currentUserId: string;
+  currentUserRole: string;
 };
 
 const manageableChannelTypes: ChatChannelType[] = [
@@ -160,9 +178,9 @@ export async function getChatSnapshotAction(selectedChannelId?: string | null, s
     ? await db.chatMessage.findMany({
         where: {
           channelId: selectedChannel,
-          deletedAt: null,
           ...(search
             ? {
+                deletedAt: null,
                 OR: [
                   { body: { contains: search, mode: "insensitive" } },
                   { sender: { name: { contains: search, mode: "insensitive" } } },
@@ -173,9 +191,21 @@ export async function getChatSnapshotAction(selectedChannelId?: string | null, s
         },
         include: {
           attachments: true,
+          reactions: {
+            include: {
+              user: { select: { id: true, name: true } },
+              customEmoji: true
+            }
+          },
           sender: {
             select: {
-              name: true
+              name: true,
+              photoUrl: true,
+              personnel: {
+                select: {
+                  photoUrl: true
+                }
+              }
             }
           }
         },
@@ -185,6 +215,10 @@ export async function getChatSnapshotAction(selectedChannelId?: string | null, s
         take: 50
       })
     : [];
+
+  const customEmojis = await db.customEmoji.findMany({
+    orderBy: { createdAt: "desc" }
+  });
 
   return {
     channels: channelsWithUnread,
@@ -197,19 +231,37 @@ export async function getChatSnapshotAction(selectedChannelId?: string | null, s
         channelId: message.channelId,
         isOwnMessage: message.senderUserId === user.id,
         senderName: message.sender?.name ?? "System",
+        senderPhotoUrl: message.sender?.photoUrl ?? message.sender?.personnel?.photoUrl ?? null,
         messageType: message.messageType,
-        body: message.body,
-        metadata: message.metadataJson,
-        attachments: message.attachments.map((attachment) => ({
-          id: attachment.id,
-          fileName: attachment.fileName,
-          fileUrl: attachment.fileUrl,
-          mimeType: attachment.mimeType,
-          fileSize: attachment.fileSize
+        body: message.deletedAt ? "" : message.body,
+        isUnsent: message.deletedAt !== null,
+        metadata: message.deletedAt ? null : message.metadataJson,
+        attachments: message.deletedAt ? [] : message.attachments.map((att) => ({
+          id: att.id,
+          fileName: att.fileName,
+          fileUrl: att.fileUrl,
+          mimeType: att.mimeType,
+          fileSize: att.fileSize
         })),
         createdAt: message.createdAt.toISOString(),
-        edited: message.updatedAt.getTime() !== message.createdAt.getTime()
-      }))
+        edited: message.updatedAt > message.createdAt,
+        reactions: (message as any).reactions?.map((r: any) => ({
+          id: r.id,
+          userId: r.userId,
+          userName: r.user.name,
+          emoji: r.emoji,
+          customEmojiId: r.customEmojiId,
+          customEmojiUrl: r.customEmoji?.imageUrl ?? null,
+          customEmojiName: r.customEmoji?.name ?? null
+        })) ?? []
+      })),
+    customEmojis: customEmojis.map(ce => ({
+      id: ce.id,
+      name: ce.name,
+      imageUrl: ce.imageUrl
+    })),
+    currentUserId: user.id,
+    currentUserRole: user.role
   };
 }
 
@@ -532,3 +584,63 @@ export async function userCanAccessChannel(channelId: string) {
   });
   return count > 0;
 }
+
+export async function unsendChatMessageAction(messageId: string, hardDelete: boolean = false): Promise<ChatActionResult> {
+  const user = await requireUser();
+  const message = await db.chatMessage.findUnique({ where: { id: messageId } });
+  
+  if (!message) {
+    return { ok: false, message: "Message not found." };
+  }
+  
+  if (message.senderUserId !== user.id) {
+    return { ok: false, message: "You can only unsend your own messages." };
+  }
+  
+  if (hardDelete && user.role === "SUPER_ADMIN") {
+    await db.chatMessage.delete({
+      where: { id: messageId }
+    });
+    return { ok: true, message: "Message completely deleted." };
+  } else {
+    await db.chatMessage.update({
+      where: { id: messageId },
+      data: { deletedAt: new Date() }
+    });
+    return { ok: true, message: "Message unsent." };
+  }
+}
+export async function toggleChatReactionAction(messageId: string, emoji: string | null, customEmojiId: string | null) {
+  try {
+    const user = await requireUser();
+    
+    // Find if the reaction already exists for this user
+    const existing = await db.chatReaction.findFirst({
+      where: {
+        messageId,
+        userId: user.id,
+        emoji,
+        customEmojiId
+      }
+    });
+
+    if (existing) {
+      await db.chatReaction.delete({ where: { id: existing.id } });
+      return { ok: true, action: "removed" };
+    } else {
+      await db.chatReaction.create({
+        data: {
+          messageId,
+          userId: user.id,
+          emoji,
+          customEmojiId
+        }
+      });
+      return { ok: true, action: "added" };
+    }
+  } catch (error) {
+    console.error("Failed to toggle reaction:", error);
+    return { ok: false, message: "Failed to toggle reaction." };
+  }
+}
+

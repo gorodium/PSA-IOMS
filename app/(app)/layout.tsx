@@ -15,10 +15,10 @@ export default async function ProtectedLayout({
   const canManageChat = canManageChatChannels(user);
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background pt-16">
+      <AppHeader user={user} />
       <AppSidebar user={user} />
-      <div className="min-h-screen lg:pl-64">
-        <AppHeader user={user} />
+      <div className="lg:pl-64">
         <main className="px-4 py-6 sm:px-6 lg:px-8">{children}</main>
       </div>
       {user && <DeferredChatDock canManageChat={canManageChat} />}

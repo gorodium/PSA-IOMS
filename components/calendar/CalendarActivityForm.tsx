@@ -35,6 +35,7 @@ export function CalendarActivityForm({
   onSuccess: () => void;
 }) {
   const [type, setType] = React.useState<ActivityType>(activity?.type || "EVENT");
+  const [additionalTypes, setAdditionalTypes] = React.useState<ActivityType[]>(activity?.additionalTypes || []);
   const [title, setTitle] = React.useState(activity?.title || "");
   const [soNumber, setSoNumber] = React.useState(activity?.soNumber || "");
   const description = activity?.description || "";
@@ -49,6 +50,7 @@ export function CalendarActivityForm({
   const [startDate, setStartDate] = React.useState(initialStartDate);
   const [endDate, setEndDate] = React.useState(initialEndDate);
   const [isMultiDay, setIsMultiDay] = React.useState(Boolean(activity?.endDate && activity.startDate !== activity.endDate));
+  const [isOffice, setIsOffice] = React.useState(activity?.location === "PSA Misamis Oriental");
 
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [errorMsg, setErrorMsg] = React.useState<string | null>(null);
@@ -97,36 +99,53 @@ export function CalendarActivityForm({
     }
   };
 
+  const fileToBase64 = (file: File): Promise<string> => new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = error => reject(error);
+  });
+
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsSubmitting(true);
     setErrorMsg(null);
 
-    const formData = new FormData();
-    if (activity?.id) formData.append("id", activity.id);
-    formData.append("type", type);
-    
-    // Default title based on type if not explicitly set (Work Event / Employee Travel)
     let finalTitle = title;
     if (type === "EVENT" && !title) finalTitle = soNumber ? `Work Event: ${soNumber}` : "Work Event";
+    if (type === "TRAINING" && !title) finalTitle = soNumber ? `Training: ${soNumber}` : "Training";
     if (type === "TRAVEL" && !title) finalTitle = soNumber ? `Travel: ${soNumber}` : "Employee Travel";
     if (type === "HOLIDAY" && !title) finalTitle = "Holiday";
-    
-    formData.append("title", finalTitle);
-    if (soNumber) formData.append("soNumber", soNumber);
-    if (description) formData.append("description", description);
-    formData.append("startDate", startDate);
-    if (isMultiDay && endDate) formData.append("endDate", endDate);
-    if (location) formData.append("location", location);
-    if (personnelId) formData.append("personnelId", personnelId);
-    if (involvedPersonnelIds.length > 0) formData.append("involvedPersonnelIds", JSON.stringify(involvedPersonnelIds));
-    if (soFile) formData.append("soFile", soFile);
 
     try {
+      let soFileBase64 = null;
+      let soFileName = null;
+
+      if (soFile) {
+        soFileBase64 = await fileToBase64(soFile);
+        soFileName = soFile.name;
+      }
+
+      const payload = {
+        id: activity?.id,
+        type,
+        additionalTypes,
+        title: finalTitle,
+        soNumber: soNumber || null,
+        description: description || null,
+        startDate,
+        endDate: (isMultiDay && endDate) ? endDate : null,
+        location: (type === "EVENT" && isOffice) ? "PSA Misamis Oriental" : (location || null),
+        personnelId: personnelId || null,
+        involvedPersonnelIds: involvedPersonnelIds.length > 0 ? involvedPersonnelIds : [],
+        soFileBase64,
+        soFileName
+      };
+
       if (activity?.id) {
-        await updateCalendarActivityAction(formData);
+        await updateCalendarActivityAction(payload);
       } else {
-        await createCalendarActivityAction(formData);
+        await createCalendarActivityAction(payload);
       }
       onSuccess();
     } catch (err) {
@@ -147,18 +166,41 @@ export function CalendarActivityForm({
       </h2>
       
       <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="space-y-2">
-          <Label>Activity Type</Label>
-          <Select 
-            value={type} 
-            onChange={(e) => setType(e.target.value as ActivityType)}
-            required
-            className="w-full"
-          >
-            <option value="EVENT">Work Event</option>
-            <option value="TRAVEL">Employee Travel</option>
-            <option value="HOLIDAY">Holiday</option>
-          </Select>
+        <div className="grid gap-4 md:grid-cols-2">
+          <div className="space-y-2">
+            <Label>Primary Type</Label>
+            <Select 
+              value={type} 
+              onChange={(e) => setType(e.target.value as ActivityType)}
+              required
+              className="w-full"
+            >
+              <option value="EVENT">Work Event</option>
+              <option value="TRAINING">Training</option>
+              <option value="TRAVEL">Employee Travel</option>
+              <option value="HOLIDAY">Holiday</option>
+            </Select>
+          </div>
+          
+          <div className="space-y-2">
+            <Label>Additional Tags (Optional)</Label>
+            <div className="border border-slate-200 dark:border-slate-800 rounded-md p-2 space-y-1 bg-slate-50 dark:bg-slate-900/50 h-10 flex items-center overflow-x-auto scrollbar-thin">
+              {["EVENT", "TRAINING", "TRAVEL", "HOLIDAY"].filter(t => t !== type).map((t) => (
+                <label key={t} className="flex items-center gap-1.5 text-xs px-2 py-0.5 hover:bg-slate-200 dark:hover:bg-slate-800 rounded cursor-pointer shrink-0">
+                  <input 
+                    type="checkbox" 
+                    checked={additionalTypes.includes(t as ActivityType)}
+                    onChange={(e) => {
+                      if (e.target.checked) setAdditionalTypes([...additionalTypes, t as ActivityType]);
+                      else setAdditionalTypes(additionalTypes.filter(x => x !== t));
+                    }}
+                    className="rounded border-input text-primary focus:ring-ring w-3 h-3"
+                  />
+                  {t === "EVENT" ? "Event" : t === "TRAINING" ? "Training" : t === "TRAVEL" ? "Travel" : "Holiday"}
+                </label>
+              ))}
+            </div>
+          </div>
         </div>
 
         {type === "HOLIDAY" && (
@@ -168,14 +210,14 @@ export function CalendarActivityForm({
           </div>
         )}
 
-        {type === "EVENT" && (
+        {(type === "EVENT" || type === "TRAINING") && (
           <div className="space-y-2">
-            <Label>Event Name</Label>
-            <Input value={title} onChange={e => setTitle(e.target.value)} required placeholder="e.g. Strategic Planning" />
+            <Label>{type === "TRAINING" ? "Training Name" : "Event Name"}</Label>
+            <Input value={title} onChange={e => setTitle(e.target.value)} required placeholder={type === "TRAINING" ? "e.g. Leadership Training" : "e.g. Strategic Planning"} />
           </div>
         )}
 
-        {(type === "EVENT" || type === "TRAVEL") && (
+        {(type === "EVENT" || type === "TRAVEL" || type === "TRAINING") && (
           <>
             <div className="space-y-2">
               <Label>SO Number</Label>
@@ -219,7 +261,7 @@ export function CalendarActivityForm({
           </>
         )}
 
-        {type === "EVENT" && (
+        {(type === "EVENT" || type === "TRAINING") && (
           <div className="space-y-2">
             <Label>Employee(s) Involved</Label>
             <div className="border border-slate-200 dark:border-slate-800 rounded-md max-h-[150px] overflow-y-auto p-2 space-y-1 bg-slate-50 dark:bg-slate-900/50">
@@ -240,7 +282,7 @@ export function CalendarActivityForm({
 
         <div className="grid gap-4 md:grid-cols-2">
           <div className="space-y-2">
-            <Label>{type === "HOLIDAY" ? "Date" : (type === "EVENT" ? "Event Date" : "Date of Travel")}</Label>
+            <Label>{type === "HOLIDAY" ? "Date" : (type === "EVENT" || type === "TRAINING" ? (isMultiDay ? "Start Date" : (type === "TRAINING" ? "Training Date" : "Event Date")) : (isMultiDay ? "Start Date" : "Date of Travel"))}</Label>
             <Input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} required />
           </div>
           {isMultiDay && (
@@ -259,14 +301,33 @@ export function CalendarActivityForm({
               onChange={e => setIsMultiDay(e.target.checked)} 
               className="rounded border-input text-primary focus:ring-ring"
             />
-            Multi-day event
+            {type === "TRAVEL" ? "Multi-day travel" : "Multi-day event"}
           </label>
         )}
 
-        {(type === "EVENT" || type === "TRAVEL") && (
+        {(type === "EVENT" || type === "TRAVEL" || type === "TRAINING") && (
           <div className="space-y-2">
-            <Label>Location</Label>
-            <Input value={location} onChange={e => setLocation(e.target.value)} placeholder="e.g. Quezon City" />
+            <div className="flex items-center justify-between">
+              <Label>Location</Label>
+              {(type === "EVENT" || type === "TRAINING") && (
+                <label className="flex items-center gap-2 text-xs font-medium cursor-pointer text-slate-600 dark:text-slate-400">
+                  <input 
+                    type="checkbox" 
+                    checked={isOffice} 
+                    onChange={e => setIsOffice(e.target.checked)} 
+                    className="rounded border-input text-primary focus:ring-ring w-3.5 h-3.5"
+                  />
+                  Held in office
+                </label>
+              )}
+            </div>
+            <Input 
+              value={isOffice ? "PSA Misamis Oriental" : location} 
+              onChange={e => setLocation(e.target.value)} 
+              placeholder="e.g. Quezon City" 
+              disabled={isOffice}
+              className={isOffice ? "bg-slate-100 dark:bg-white/5 text-slate-500 cursor-not-allowed" : ""}
+            />
           </div>
         )}
 

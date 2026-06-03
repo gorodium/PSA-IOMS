@@ -179,7 +179,7 @@ function ChannelMembersForm({ channel, users }: { channel: Channel; users: UserO
             <span className="min-w-0">
               <span className="block truncate text-sm font-medium">{user.name}</span>
               <span className="block truncate text-xs text-muted-foreground">
-                {user.email ?? "No email"} · {user.role.replaceAll("_", " ")}
+                {user.email ?? "No email"} • {user.role === "SUPER_ADMIN" ? "System Administrator" : user.role.replaceAll("_", " ")}
               </span>
             </span>
             <input

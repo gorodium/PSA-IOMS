@@ -139,14 +139,14 @@ export default async function PersonnelPage({ searchParams }: PersonnelPageProps
   const regularCount = totalEmployees - coterminousCount - coswCount - veiCount;
 
   const sectionCounts = personnelSectionOptions.reduce((acc, section) => {
-    if (section.toLowerCase() !== "head of office" && section.toLowerCase() !== "n/a") {
+    if (section.toLowerCase() !== "provincial head" && section.toLowerCase() !== "head of office" && section.toLowerCase() !== "n/a") {
       acc[section] = 0;
     }
     return acc;
   }, {} as Record<string, number>);
 
   filteredPersonnel.forEach((p) => {
-    if (!p.section || p.section.toLowerCase() === "head of office" || p.section.toLowerCase() === "n/a") return;
+    if (!p.section || p.section.toLowerCase() === "provincial head" || p.section.toLowerCase() === "head of office" || p.section.toLowerCase() === "n/a") return;
     if (sectionCounts[p.section] !== undefined) {
       sectionCounts[p.section]++;
     } else {
@@ -267,6 +267,29 @@ export default async function PersonnelPage({ searchParams }: PersonnelPageProps
 
       {sortBy.startsWith("fullName") || sortBy.startsWith("section") ? (
         <div className="space-y-8">
+          {/* Provincial Head Section */}
+          {(() => {
+            const headPersonnel = filteredPersonnel.filter(p => p.section && (p.section.toLowerCase() === "provincial head" || p.section.toLowerCase() === "head of office"));
+            if (headPersonnel.length === 0) return null;
+            return (
+              <div className="space-y-4">
+                <h2 className="text-xl font-bold text-slate-800 dark:text-slate-200 border-b border-slate-200 dark:border-white/10 pb-2">
+                  Provincial Head
+                </h2>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  {headPersonnel.map(person => (
+                    <EmployeeCard 
+                      key={person.id} 
+                      personnel={person} 
+                      canEdit={canUpdate} 
+                      searchParams={params} 
+                    />
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
+
           {sections.map(([section]) => {
             const personnelInSection = filteredPersonnel.filter(p => (p.section || "N/A") === section || (section === "Head of Office" && p.section === "Head of Office"));
             if (personnelInSection.length === 0) return null;
@@ -290,14 +313,14 @@ export default async function PersonnelPage({ searchParams }: PersonnelPageProps
             );
           })}
           
-          {/* Uncategorized / N/A Section */}
+          {/* Other Section */}
           {(() => {
-            const uncategorized = filteredPersonnel.filter(p => !p.section || p.section === "N/A");
+            const uncategorized = filteredPersonnel.filter(p => !p.section || p.section.toLowerCase() === "n/a" || p.section.toLowerCase() === "uncategorized" || p.section.toLowerCase() === "other");
             if (uncategorized.length === 0) return null;
             return (
               <div className="space-y-4">
                 <h2 className="text-xl font-bold text-slate-800 dark:text-slate-200 border-b border-slate-200 dark:border-white/10 pb-2">
-                  Uncategorized / Other
+                  Other
                 </h2>
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                   {uncategorized.map(person => (

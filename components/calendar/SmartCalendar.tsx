@@ -1,8 +1,9 @@
 "use client";
+import Link from "next/link";
 
 import { useState, useEffect } from "react";
 import { format, addDays, subDays, startOfWeek, endOfWeek, addWeeks, subWeeks, isSameDay, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, addMonths, subMonths } from "date-fns";
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Clock, Lock, Car, Plane, Users, Globe, Building, X, Edit2, MapPin, User, FileText, Trash2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Clock, Lock, Car, Plane, Users, Globe, Building, X, Edit2, MapPin, User, FileText, Trash2, GraduationCap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import type { CalendarActivity, Personnel } from "@prisma/client";
@@ -10,7 +11,7 @@ import { getCalendarActivitiesAction, deleteCalendarActivityAction } from "@/app
 import { cn } from "@/lib/utils";
 import { CalendarActivityForm } from "./CalendarActivityForm";
 
-type FilterType = "ALL" | "EVENT" | "TRAVEL" | "VEHICLE" | "HOLIDAY" | "ROOM";
+type FilterType = "ALL" | "EVENT" | "TRAVEL" | "VEHICLE" | "HOLIDAY" | "ROOM" | "TRAINING";
 
 type ActivityWithRelations = CalendarActivity & {
   personnel?: Personnel | null;
@@ -25,6 +26,9 @@ export function SmartCalendar({ isAdmin = false, personnel = [] }: { isAdmin?: b
   const [activities, setActivities] = useState<ActivityWithRelations[]>([]);
   const [isDeleting, setIsDeleting] = useState(false);
   const [activityToDelete, setActivityToDelete] = useState<string | null>(null);
+  
+  // State for Special Orders grouped popover/modal
+  const [selectedDateSOs, setSelectedDateSOs] = useState<{ date: Date, activities: ActivityWithRelations[] } | null>(null);
 
   useEffect(() => {
     // Fetch activities when date/view changes
@@ -75,7 +79,16 @@ export function SmartCalendar({ isAdmin = false, personnel = [] }: { isAdmin?: b
 
   // Group activities by date
   const getActivitiesForDay = (day: Date) => {
-    return filteredActivities.filter(a => isSameDay(new Date(a.startDate), day));
+    const targetTime = new Date(day.getFullYear(), day.getMonth(), day.getDate()).getTime();
+    return filteredActivities.filter(a => {
+      const sDate = new Date(a.startDate);
+      const startTime = new Date(sDate.getFullYear(), sDate.getMonth(), sDate.getDate()).getTime();
+      
+      const eDate = a.endDate ? new Date(a.endDate) : sDate;
+      const endTime = new Date(eDate.getFullYear(), eDate.getMonth(), eDate.getDate()).getTime();
+      
+      return targetTime >= startTime && targetTime <= endTime;
+    });
   };
 
   const handlePrev = () => {
@@ -99,6 +112,7 @@ export function SmartCalendar({ isAdmin = false, personnel = [] }: { isAdmin?: b
       case "VEHICLE": return <Car className="h-[14px] w-[14px]" />;
       case "HOLIDAY": return <Globe className="h-[14px] w-[14px]" />;
       case "ROOM": return <Building className="h-[14px] w-[14px]" />;
+      case "TRAINING": return <GraduationCap className="h-[14px] w-[14px]" />;
       default: return <Lock className="h-[14px] w-[14px]" />;
     }
   };
@@ -110,8 +124,35 @@ export function SmartCalendar({ isAdmin = false, personnel = [] }: { isAdmin?: b
       case "VEHICLE": return "text-emerald-500 dark:text-green-400";
       case "HOLIDAY": return "text-violet-500 dark:text-violet-400";
       case "ROOM": return "text-amber-500 dark:text-amber-400";
+      case "TRAINING": return "text-teal-500 dark:text-teal-400";
       default: return "text-rose-500 dark:text-rose-400";
     }
+  };
+
+  const getLabelForActivity = (type: string) => {
+    switch (type) {
+      case "EVENT": return "Work Event";
+      case "TRAVEL": return "Travel Schedule";
+      case "VEHICLE": return "Vehicle Usage";
+      case "HOLIDAY": return "Holiday";
+      case "ROOM": return "Room Reservation";
+      case "TRAINING": return "Training";
+      default: return "Activity";
+    }
+  };
+
+  const renderActivityBadges = (activity: ActivityWithRelations, isSmall = false) => {
+    const types = [activity.type, ...(activity.additionalTypes || [])];
+    return (
+      <div className="flex flex-wrap items-center gap-1.5 mb-2">
+        {types.map((t, idx) => (
+          <div key={idx} className={cn(`flex items-center gap-1.5 rounded-md font-bold uppercase tracking-wider bg-slate-100 dark:bg-white/5 ${getColorClassForActivity(t)}`, isSmall ? "text-[10px] px-1.5 py-0.5" : "text-[11px] px-2 py-1")}>
+            {getIconForActivity(t)}
+            <span>{getLabelForActivity(t)}</span>
+          </div>
+        ))}
+      </div>
+    );
   };
 
   // Mocking current time for the UI element
@@ -165,10 +206,7 @@ export function SmartCalendar({ isAdmin = false, personnel = [] }: { isAdmin?: b
                     {activity.title}
                   </td>
                   <td className="px-6 py-5">
-                    <div className={cn("inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-[11px] font-semibold tracking-wide bg-slate-100 dark:bg-white/5", getColorClassForActivity(activity.type))}>
-                      {getIconForActivity(activity.type)}
-                      {activity.type === "EVENT" ? "Work Event" : activity.type === "TRAVEL" ? "Travel" : activity.type === "HOLIDAY" ? "Holiday" : activity.type === "ROOM" ? "Room" : "Vehicle"}
-                    </div>
+                    {renderActivityBadges(activity, false)}
                   </td>
                   <td className="px-6 py-5 text-slate-600 dark:text-slate-400">
                     {activity.type === "TRAVEL" && activity.personnel?.fullName ? (
@@ -202,6 +240,8 @@ export function SmartCalendar({ isAdmin = false, personnel = [] }: { isAdmin?: b
         <div className="grid grid-cols-7 gap-4 min-w-[1000px] h-full">
           {weekDays.map((day, index) => {
             const dayActivities = getActivitiesForDay(day);
+            const soActivities = dayActivities.filter(a => a.soNumber && a.type !== "TRAINING");
+            const otherActivities = dayActivities.filter(a => !(a.soNumber && a.type !== "TRAINING"));
             const isToday = isSameDay(day, new Date());
 
             return (
@@ -221,19 +261,34 @@ export function SmartCalendar({ isAdmin = false, personnel = [] }: { isAdmin?: b
                       <span className="text-xs text-slate-400 font-medium">No activities</span>
                     </div>
                   ) : null}
-                  {dayActivities.map(activity => (
+                  
+                  {soActivities.length > 0 && (
+                    <div 
+                      onClick={() => setSelectedDateSOs({ date: day, activities: soActivities })}
+                      className="bg-slate-100 dark:bg-[#222838] rounded-xl p-3 border border-slate-200 dark:border-white/10 transition-colors cursor-pointer hover:bg-slate-200 dark:hover:bg-[#2C344A]"
+                    >
+                      <div className="flex items-center gap-2 mb-1">
+                        <FileText className="w-4 h-4 text-slate-600 dark:text-slate-400" />
+                        <span className="font-semibold text-slate-900 dark:text-white text-[13px]">
+                          Special Orders
+                        </span>
+                      </div>
+                      <span className="text-xs font-medium text-slate-500 dark:text-slate-400 bg-slate-200 dark:bg-white/10 px-2 py-0.5 rounded-full">
+                        {soActivities.length} {soActivities.length === 1 ? 'record' : 'records'}
+                      </span>
+                    </div>
+                  )}
+
+                  {otherActivities.map(activity => (
                     <div 
                       key={activity.id} 
                       onClick={() => handleActivityClick(activity)}
                       className={cn(
-                        "bg-slate-50 dark:bg-[#1C212E] rounded-xl p-[14px] border border-slate-200 dark:border-white/5 transition-colors group",
+                        "bg-slate-50 dark:bg-[#1C212E] rounded-xl p-2 border border-slate-200 dark:border-white/5 transition-colors group",
                         isAdmin ? "cursor-pointer hover:bg-slate-100 dark:hover:bg-[#222838]" : ""
                       )}
                     >
-                      <div className={cn("flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider mb-2", getColorClassForActivity(activity.type))}>
-                        {getIconForActivity(activity.type)}
-                        <span>{activity.type === "EVENT" ? "Work Event" : activity.type === "TRAVEL" ? "Travel Schedule" : activity.type === "HOLIDAY" ? "Holiday" : activity.type === "ROOM" ? "Room Reservation" : "Vehicle Usage"}</span>
-                      </div>
+                      {renderActivityBadges(activity, true)}
 
                       <div className="mb-2">
                         <span className="font-semibold text-slate-900 dark:text-white text-[13px] leading-snug block">{activity.title}</span>
@@ -288,6 +343,8 @@ export function SmartCalendar({ isAdmin = false, personnel = [] }: { isAdmin?: b
         <div className="flex-1 grid grid-cols-7 grid-rows-5 md:grid-rows-auto gap-px bg-slate-200 dark:bg-white/10 border border-slate-200 dark:border-white/10 rounded-xl overflow-hidden min-h-0">
           {monthDays.map((day, index) => {
             const dayActivities = getActivitiesForDay(day);
+            const soActivities = dayActivities.filter(a => a.soNumber && a.type !== "TRAINING");
+            const otherActivities = dayActivities.filter(a => !(a.soNumber && a.type !== "TRAINING"));
             const isToday = isSameDay(day, new Date());
             const isCurrentMonth = isSameMonth(day, currentDate);
             
@@ -313,7 +370,26 @@ export function SmartCalendar({ isAdmin = false, personnel = [] }: { isAdmin?: b
                 </div>
                 
                 <div className="flex-1 overflow-y-auto space-y-1 scrollbar-none">
-                  {dayActivities.map(activity => (
+                  {soActivities.length > 0 && (
+                    <div 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedDateSOs({ date: day, activities: soActivities });
+                      }}
+                      className={cn(
+                        "flex items-center justify-between text-[10px] px-1.5 py-0.5 rounded border border-slate-300 dark:border-white/10 truncate bg-slate-200 dark:bg-[#222838] font-semibold text-slate-800 dark:text-slate-200",
+                        "cursor-pointer hover:bg-slate-300 dark:hover:bg-[#2C344A] transition-colors"
+                      )}
+                    >
+                      <div className="flex items-center gap-1">
+                        <FileText className="w-3 h-3 text-slate-600 dark:text-slate-400" />
+                        <span>Special Orders</span>
+                      </div>
+                      <span className="bg-white/50 dark:bg-black/20 rounded-full px-1.5 py-[1px] text-[9px]">{soActivities.length}</span>
+                    </div>
+                  )}
+
+                  {otherActivities.map(activity => (
                     <div 
                       key={activity.id} 
                       onClick={(e) => {
@@ -358,14 +434,15 @@ export function SmartCalendar({ isAdmin = false, personnel = [] }: { isAdmin?: b
             <Select 
               value={filter} 
               onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setFilter(e.target.value as FilterType)}
-              className="w-[160px] bg-slate-100 dark:bg-white/5 border-slate-200 dark:border-white/10 text-slate-900 dark:text-white h-9 rounded-lg text-sm font-medium focus:ring-0 focus:ring-offset-0 px-2"
+              className="w-[140px] bg-slate-100 dark:bg-white/5 border-slate-200 dark:border-white/10 text-slate-900 dark:text-white h-9 rounded-lg text-sm font-medium focus:ring-0 focus:ring-offset-0 px-2"
             >
               <option value="ALL" className="bg-white dark:bg-[#1C2130] text-slate-900 dark:text-white">All Activities</option>
               <option value="EVENT" className="bg-white dark:bg-[#1C2130] text-slate-900 dark:text-white">Work Events</option>
+              <option value="TRAINING" className="bg-white dark:bg-[#1C2130] text-slate-900 dark:text-white">Training</option>
+              <option value="TRAVEL" className="bg-white dark:bg-[#1C2130] text-slate-900 dark:text-white">Travel Schedule</option>
               <option value="HOLIDAY" className="bg-white dark:bg-[#1C2130] text-slate-900 dark:text-white">Holidays</option>
-              <option value="TRAVEL" className="bg-white dark:bg-[#1C2130] text-slate-900 dark:text-white">Travel</option>
-              <option value="VEHICLE" className="bg-white dark:bg-[#1C2130] text-slate-900 dark:text-white">Vehicle</option>
-              <option value="ROOM" className="bg-white dark:bg-[#1C2130] text-slate-900 dark:text-white">Room Reservation</option>
+              <option value="ROOM" className="bg-white dark:bg-[#1C2130] text-slate-900 dark:text-white">Rooms</option>
+              <option value="VEHICLE" className="bg-white dark:bg-[#1C2130] text-slate-900 dark:text-white">Vehicles</option>
             </Select>
           </div>
         </div>
@@ -419,10 +496,12 @@ export function SmartCalendar({ isAdmin = false, personnel = [] }: { isAdmin?: b
       <div className="flex flex-wrap items-center gap-4 px-6 py-3 bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-white/5 text-xs font-medium">
         <span className="text-slate-500 dark:text-slate-400 mr-2 uppercase tracking-wider text-[10px] font-bold">Legend:</span>
         <div className="flex items-center gap-1.5"><Users className="w-3.5 h-3.5 text-rose-500" /> Work Event</div>
+        <div className="flex items-center gap-1.5"><GraduationCap className="w-3.5 h-3.5 text-teal-500" /> Training</div>
         <div className="flex items-center gap-1.5"><Globe className="w-3.5 h-3.5 text-violet-500" /> Holiday</div>
         <div className="flex items-center gap-1.5"><Plane className="w-3.5 h-3.5 text-blue-500" /> Travel</div>
         <div className="flex items-center gap-1.5"><Car className="w-3.5 h-3.5 text-emerald-500" /> Vehicle</div>
         <div className="flex items-center gap-1.5"><Building className="w-3.5 h-3.5 text-amber-500" /> Room</div>
+        <div className="flex items-center gap-1.5"><FileText className="w-3.5 h-3.5 text-slate-500" /> Special Order</div>
       </div>
 
       {/* Render Current View */}
@@ -452,36 +531,41 @@ export function SmartCalendar({ isAdmin = false, personnel = [] }: { isAdmin?: b
             
             <div className="flex items-start justify-between gap-4 mb-5 pr-8">
               <div>
-                <div className={cn("inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11px] font-bold uppercase tracking-wider mb-2", getColorClassForActivity(selectedActivity.type), "bg-slate-100 dark:bg-white/5")}>
-                  {getIconForActivity(selectedActivity.type)}
-                  <span>{selectedActivity.type === "EVENT" ? "Work Event" : selectedActivity.type === "TRAVEL" ? "Travel Schedule" : selectedActivity.type === "HOLIDAY" ? "Holiday" : selectedActivity.type === "ROOM" ? "Room Reservation" : "Vehicle Usage"}</span>
-                </div>
-                <h2 className="text-xl font-bold text-slate-900 dark:text-white leading-tight">
+                {renderActivityBadges(selectedActivity, false)}
+                <h2 className="text-xl font-bold text-slate-900 dark:text-white leading-tight mt-2">
                   {selectedActivity.title}
                 </h2>
                 <div className="flex flex-col gap-2 mt-2">
+                  {selectedActivity.title?.toLowerCase().includes("convocation") && (
+                    <Link 
+                      href="/convocation"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-violet-50 dark:bg-violet-900/30 border border-violet-200 dark:border-violet-800 rounded-md text-violet-700 dark:text-violet-300 text-[12px] font-medium hover:bg-violet-100 dark:hover:bg-violet-900/50 transition-colors w-fit h-auto shadow-sm"
+                    >
+                      <FileText className="w-4 h-4" />
+                      Show Convocation Program
+                    </Link>
+                  )}
                   {selectedActivity.soNumber && (
-                    <div className="inline-flex items-center gap-1.5 px-2 py-1 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-md text-slate-700 dark:text-slate-300 text-[12px] font-medium w-fit">
+                    <a 
+                      href={selectedActivity.soFileUrl || `/api/drive?ref=${encodeURIComponent(selectedActivity.soNumber)}`} 
+                      target="_blank" 
+                      rel="noopener noreferrer" 
+                      className="inline-flex items-center gap-1.5 px-2 py-1 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-md text-blue-700 dark:text-blue-300 text-[12px] font-medium hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors w-fit"
+                    >
                       <FileText className="w-3.5 h-3.5" />
                       SO No: {selectedActivity.soNumber}
-                    </div>
-                  )}
-                  {selectedActivity.soFileUrl && (
-                    <a href={selectedActivity.soFileUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 px-2 py-1 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-md text-blue-700 dark:text-blue-300 text-[12px] font-medium hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors w-fit">
-                      <FileText className="w-3.5 h-3.5" />
-                      View SO Document
                     </a>
                   )}
                 </div>
               </div>
               
               {isAdmin && (
-                <div className="flex items-center gap-1.5 shrink-0">
-                  <Button variant="outline" size="sm" onClick={() => handleEditClick(selectedActivity)} className="h-6 px-2 gap-1 text-[11px] bg-slate-50 dark:bg-white/5 border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-300">
+                <div className="flex flex-col items-center gap-1.5 shrink-0">
+                  <Button variant="outline" size="sm" onClick={() => handleEditClick(selectedActivity)} className="h-6 px-2 gap-1 text-[11px] bg-slate-50 dark:bg-white/5 border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-300 w-full justify-start">
                     <Edit2 className="w-3 h-3" />
                     Edit
                   </Button>
-                  <Button variant="outline" size="sm" onClick={() => handleDeleteActivity(selectedActivity.id)} disabled={isDeleting} className="h-6 px-2 gap-1 text-[11px] bg-red-50 hover:bg-red-100 dark:bg-red-900/10 dark:hover:bg-red-900/30 border-red-200 dark:border-red-900/50 text-red-600 dark:text-red-400">
+                  <Button variant="outline" size="sm" onClick={() => handleDeleteActivity(selectedActivity.id)} disabled={isDeleting} className="h-6 px-2 gap-1 text-[11px] bg-red-50 hover:bg-red-100 dark:bg-red-900/10 dark:hover:bg-red-900/30 border-red-200 dark:border-red-900/50 text-red-600 dark:text-red-400 w-full justify-start">
                     <Trash2 className="w-3 h-3" />
                     {isDeleting ? "..." : "Delete"}
                   </Button>
@@ -490,6 +574,16 @@ export function SmartCalendar({ isAdmin = false, personnel = [] }: { isAdmin?: b
             </div>
 
             <div className="space-y-4">
+              {selectedActivity.description && (
+                <div className="flex gap-3 text-sm">
+                  <FileText className="w-5 h-5 text-slate-400 shrink-0" />
+                  <div>
+                    <p className="font-medium text-slate-900 dark:text-slate-200">Purpose</p>
+                    <p className="text-slate-600 dark:text-slate-400 whitespace-pre-wrap">{selectedActivity.description.replace(/^Purpose: /, '')}</p>
+                  </div>
+                </div>
+              )}
+
               <div className="flex gap-3 text-sm">
                 <CalendarIcon className="w-5 h-5 text-slate-400 shrink-0" />
                 <div>
@@ -534,6 +628,76 @@ export function SmartCalendar({ isAdmin = false, personnel = [] }: { isAdmin?: b
                   </div>
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Modal for viewing grouped Special Orders on a specific date */}
+      {selectedDateSOs && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="bg-white dark:bg-[#1C2130] rounded-xl shadow-2xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in-95 duration-200 max-h-[85vh] flex flex-col">
+            <div className="flex items-center justify-between p-5 border-b border-slate-100 dark:border-white/5 bg-slate-50 dark:bg-slate-900/50">
+              <div>
+                <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                  <FileText className="w-5 h-5 text-slate-500" />
+                  Special Orders
+                </h3>
+                <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
+                  {format(selectedDateSOs.date, "EEEE, MMMM d, yyyy")}
+                </p>
+              </div>
+              <Button variant="ghost" size="icon" onClick={() => setSelectedDateSOs(null)} className="h-8 w-8 text-slate-500 hover:bg-slate-200 dark:hover:bg-white/10 rounded-full">
+                <X className="w-4 h-4" />
+              </Button>
+            </div>
+            
+            <div className="flex-1 overflow-y-auto p-2">
+              <div className="space-y-2">
+                {selectedDateSOs.activities.map(activity => (
+                  <div 
+                    key={activity.id}
+                    onClick={() => {
+                      setSelectedDateSOs(null);
+                      handleActivityClick(activity);
+                    }}
+                    className="p-4 rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-[#0F121A] hover:bg-slate-50 dark:hover:bg-[#151923] cursor-pointer transition-colors"
+                  >
+                    <div className="flex justify-between items-start mb-2">
+                      {renderActivityBadges(activity, true)}
+                      <div className="flex items-center gap-2">
+                        {activity.soNumber && (
+                          <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                            SO: {activity.soNumber}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    
+                    <h4 className="font-semibold text-slate-900 dark:text-white text-sm mb-1">{activity.title}</h4>
+                    
+                    {activity.location && (
+                      <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 mb-1">
+                        <MapPin className="w-3.5 h-3.5" />
+                        <span>{activity.location}</span>
+                      </div>
+                    )}
+                    
+                    {activity.personnel?.fullName && (
+                      <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
+                        <User className="w-3.5 h-3.5" />
+                        <span>{activity.personnel.fullName}</span>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+            
+            <div className="p-4 border-t border-slate-100 dark:border-white/5 bg-slate-50 dark:bg-slate-900/50 flex justify-end">
+              <Button variant="outline" onClick={() => setSelectedDateSOs(null)}>
+                Close
+              </Button>
             </div>
           </div>
         </div>

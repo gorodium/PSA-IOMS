@@ -34,7 +34,10 @@ export const projectCategoryOptions: Array<{
   }
 ];
 
-export const personnelSectionOptions = projectCategoryOptions.map((category) => category.label);
+export const personnelSectionOptions = [
+  "Provincial Head",
+  ...projectCategoryOptions.map((category) => category.label)
+];
 
 export function getProjectCategoryLabel(value: string) {
   return projectCategoryOptions.find((category) => category.value === value)?.label ?? value;

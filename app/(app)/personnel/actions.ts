@@ -2,6 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { mkdir, writeFile } from "fs/promises";
+import path from "path";
 import { db } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
 import { writeAuditLog } from "@/lib/audit";
@@ -32,22 +34,46 @@ function personnelInputFromFormData(formData: FormData) {
     travelDetails: formData.get("travelDetails"),
     travelDestination: formData.get("travelDestination"),
     travelStartDate: formData.get("travelStartDate"),
-    travelEndDate: formData.get("travelEndDate")
+    travelEndDate: formData.get("travelEndDate"),
+    photoBase64: formData.get("photoBase64") as string | null
   };
+}
+
+async function processPhotoUpload(photoBase64: string | null | undefined): Promise<string | undefined> {
+  if (!photoBase64) return undefined;
+  
+  try {
+    const base64Data = photoBase64.replace(/^data:image\/\w+;base64,/, "");
+    const buffer = Buffer.from(base64Data, "base64");
+    const fileName = `${Date.now()}-${Math.round(Math.random() * 1000)}.webp`;
+    const uploadDir = path.join(process.cwd(), "public/uploads/personnel");
+    
+    await mkdir(uploadDir, { recursive: true });
+    await writeFile(path.join(uploadDir, fileName), buffer);
+    
+    return `/uploads/personnel/${fileName}`;
+  } catch (error) {
+    console.error("Failed to process photo upload:", error);
+    return undefined;
+  }
 }
 
 export async function createPersonnelAction(formData: FormData) {
   const user = await requirePermission("create", "personnel");
-  const parsed = createPersonnelSchema.safeParse(personnelInputFromFormData(formData));
+  const inputData = personnelInputFromFormData(formData);
+  const parsed = createPersonnelSchema.safeParse(inputData);
 
   if (!parsed.success) {
     throw new Error(parsed.error.issues[0]?.message ?? "Personnel data is invalid.");
   }
 
+  const photoUrl = await processPhotoUpload(inputData.photoBase64);
+
   const personnel = await db.personnel.create({
     data: {
       ...parsed.data,
-      slug: parsed.data.fullName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '')
+      slug: parsed.data.fullName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, ''),
+      ...(photoUrl ? { photoUrl } : {})
     }
   });
 
@@ -64,7 +90,8 @@ export async function createPersonnelAction(formData: FormData) {
 
 export async function updatePersonnelAction(formData: FormData) {
   const user = await requirePermission("update", "personnel");
-  const parsed = updatePersonnelSchema.safeParse(personnelInputFromFormData(formData));
+  const inputData = personnelInputFromFormData(formData);
+  const parsed = updatePersonnelSchema.safeParse(inputData);
 
   if (!parsed.success) {
     throw new Error(parsed.error.issues[0]?.message ?? "Personnel data is invalid.");
@@ -79,6 +106,8 @@ export async function updatePersonnelAction(formData: FormData) {
   if (!oldPersonnel) {
     throw new Error("Personnel record was not found.");
   }
+
+  const photoUrl = await processPhotoUpload(inputData.photoBase64);
 
   const personnel = await db.personnel.update({
     where: {
@@ -97,7 +126,8 @@ export async function updatePersonnelAction(formData: FormData) {
       travelDestination: parsed.data.travelDestination,
       travelStartDate: parsed.data.travelStartDate,
       travelEndDate: parsed.data.travelEndDate,
-      slug: parsed.data.fullName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '')
+      slug: parsed.data.fullName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, ''),
+      ...(photoUrl ? { photoUrl } : {})
     }
   });
 

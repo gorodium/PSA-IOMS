@@ -3,13 +3,14 @@
 import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Save, X } from "lucide-react";
+import { Save, X, Camera } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { personnelSectionOptions, PREDEFINED_POSITIONS, parseInitialPosition, parseInitialSection } from "@/lib/taxonomy";
+import { ImageCropper, type CroppedImage } from "@/components/personnel/ImageCropper";
 import { PersonnelDeleteButtons } from "@/components/personnel/PersonnelDeleteButtons";
 import {
   AlertDialog,
@@ -34,7 +35,9 @@ type PersonnelFormRecord = {
   travelDetails?: string | null;
   travelDestination?: string | null;
   travelStartDate?: Date | null;
+  travelStartDate?: Date | null;
   travelEndDate?: Date | null;
+  photoUrl?: string | null;
 };
 
 
@@ -72,6 +75,28 @@ export function PersonnelForm({
   const [showSuccess, setShowSuccess] = React.useState(false);
   const [errorMsg, setErrorMsg] = React.useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
+
+  // Photo state
+  const [photoPreview, setPhotoPreview] = React.useState<string | null>(personnel?.photoUrl || null);
+  const [photoBase64, setPhotoBase64] = React.useState<string>("");
+  const [cropperSrc, setCropperSrc] = React.useState<string | null>(null);
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      const reader = new FileReader();
+      reader.addEventListener("load", () => setCropperSrc(reader.result?.toString() || null));
+      reader.readAsDataURL(e.target.files[0]);
+    }
+    // reset input so the same file can be selected again if needed
+    e.target.value = "";
+  };
+
+  const handleCropComplete = (cropped: CroppedImage) => {
+    setPhotoPreview(cropped.base64);
+    setPhotoBase64(cropped.base64);
+    setCropperSrc(null);
+  };
+
 
   React.useEffect(() => {
     setSelectedPosition(initial.selectedPosition);
@@ -124,6 +149,26 @@ export function PersonnelForm({
             </Button>
           </CardHeader>
           <CardContent className="grid gap-4">
+            
+            <div className="flex items-center gap-6 mb-2">
+              <div className={`relative group w-24 h-24 rounded-2xl overflow-hidden border-2 border-slate-200 dark:border-slate-700 flex items-center justify-center shrink-0 ${!photoPreview ? "bg-slate-100 dark:bg-slate-800" : ""}`}>
+                {photoPreview ? (
+                  <img src={photoPreview} alt="Employee" className="w-full h-full object-cover" />
+                ) : (
+                  <Camera className="w-8 h-8 text-slate-400" />
+                )}
+                <label className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center cursor-pointer transition-opacity">
+                  <span className="text-white text-xs font-medium">Change</span>
+                  <input type="file" accept="image/*" className="hidden" onChange={handleFileSelect} />
+                </label>
+              </div>
+              <div className="space-y-1">
+                <h3 className="text-sm font-medium">Profile Photo</h3>
+                <p className="text-xs text-muted-foreground">Upload a professional headshot. Recommended size is 500x500px. The image will be auto-resized to keep file size small.</p>
+              </div>
+            </div>
+            <input type="hidden" name="photoBase64" value={photoBase64} />
+
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="employeeNo">Employee No.</Label>
@@ -351,6 +396,14 @@ export function PersonnelForm({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {cropperSrc && (
+        <ImageCropper
+          imageSrc={cropperSrc}
+          onCropComplete={handleCropComplete}
+          onCancel={() => setCropperSrc(null)}
+        />
+      )}
     </>
   );
 }

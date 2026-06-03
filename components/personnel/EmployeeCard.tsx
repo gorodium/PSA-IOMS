@@ -34,6 +34,7 @@ type EmployeeCardProps = {
     travelDestination: string | null;
     travelStartDate: Date | null;
     travelEndDate: Date | null;
+    photoUrl?: string | null;
     projectAssignments?: ProjectAssignment[];
   };
   canEdit: boolean;
@@ -176,57 +177,74 @@ export function EmployeeCard({ personnel, canEdit, searchParams }: EmployeeCardP
       !personnel.isActive && "opacity-75 grayscale-[0.2]"
     )}>
       {/* Top Section */}
-      <div className="p-5 pb-4 border-b border-border/50">
-        <div className="flex items-start justify-between gap-4 mb-3">
-          <div className="flex-1 min-w-0">
-            <h3 className="font-semibold text-lg truncate text-slate-900 dark:text-slate-100" title={personnel.fullName}>
-              {personnel.fullName}
-            </h3>
-            <div className="flex flex-col gap-1.5 mt-1.5">
-              <span className="text-sm font-medium text-slate-700 dark:text-slate-300 truncate max-w-[250px]" title={displayPosition}>
-                {displayPosition}
-              </span>
-              <div className="flex items-center gap-2">
-                <span className={`px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded border ${getEmploymentBadgeColor()} border-current/20`}>
-                  {employmentType}
-                </span>
-                <span className="text-slate-300 dark:text-slate-600">&bull;</span>
-                <span className="text-xs text-slate-500 dark:text-slate-400 truncate" title={personnel.section}>
-                  {personnel.section}
-                </span>
-              </div>
-            </div>
-          </div>
-          <div className="flex flex-col items-end gap-2 shrink-0">
-            {!personnel.isActive && (
-              <span className="px-2 py-0.5 text-[10px] font-bold tracking-wide uppercase rounded bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400">
-                Archived
-              </span>
-            )}
-            {personnel.employeeNo && (
-              <span className="text-xs font-medium text-slate-400 dark:text-slate-500">
-                Employee No. {personnel.employeeNo}
+      <div className="flex flex-row p-5 pb-4 border-b border-border/50 gap-5">
+        
+        {/* Left Side: Photo */}
+        <div className="shrink-0 flex items-center">
+          <div className={`w-20 h-20 sm:w-24 sm:h-24 rounded-2xl overflow-hidden border-2 border-slate-200 dark:border-slate-700 flex items-center justify-center shadow-sm ${!personnel.photoUrl ? "bg-slate-100 dark:bg-slate-800" : ""}`}>
+            {personnel.photoUrl ? (
+              <img src={personnel.photoUrl} alt={personnel.fullName} className="w-full h-full object-cover" />
+            ) : (
+              <span className="text-3xl font-bold text-slate-300 dark:text-slate-600">
+                {personnel.fullName.charAt(0).toUpperCase()}
               </span>
             )}
           </div>
         </div>
 
-        {/* Contact & Location */}
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-4">
-          {personnel.email && (
-            <a href={`mailto:${personnel.email}`} className="flex items-center gap-1.5 text-sm text-slate-600 hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-400 transition-colors">
-              <Mail className="w-3.5 h-3.5" />
-              <span className="truncate max-w-[150px]">{personnel.email}</span>
-            </a>
-          )}
-          {personnel.contactNo && (
-            <a href={`tel:${personnel.contactNo}`} className="flex items-center gap-1.5 text-sm text-slate-600 hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-400 transition-colors">
-              <Phone className="w-3.5 h-3.5" />
-              <span>{personnel.contactNo}</span>
-            </a>
-          )}
-          <div className="ml-auto">
-            {renderLocationBadge()}
+        {/* Right Side: Employee Data */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-start justify-between gap-4 mb-3">
+            <div className="flex-1 min-w-0">
+              <h3 className="font-semibold text-lg truncate text-slate-900 dark:text-slate-100" title={personnel.fullName}>
+                {personnel.fullName}
+              </h3>
+              <div className="flex flex-col gap-1.5 mt-1.5">
+                <span className="text-sm font-medium text-slate-700 dark:text-slate-300 truncate max-w-[250px]" title={displayPosition}>
+                  {displayPosition}
+                </span>
+                <div className="flex items-center gap-2">
+                  <span className={`px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded border ${getEmploymentBadgeColor()} border-current/20`}>
+                    {employmentType}
+                  </span>
+                  <span className="text-slate-300 dark:text-slate-600">&bull;</span>
+                  <span className="text-xs text-slate-500 dark:text-slate-400 truncate" title={personnel.section}>
+                    {personnel.section}
+                  </span>
+                </div>
+              </div>
+            </div>
+            <div className="flex flex-col items-end gap-2 shrink-0">
+              {!personnel.isActive && (
+                <span className="px-2 py-0.5 text-[10px] font-bold tracking-wide uppercase rounded bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+                  Archived
+                </span>
+              )}
+              {personnel.employeeNo && (
+                <span className="text-xs font-medium text-slate-400 dark:text-slate-500">
+                  Employee No. {personnel.employeeNo}
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* Contact & Location */}
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-4">
+            {personnel.email && (
+              <a href={`mailto:${personnel.email}`} className="flex items-center gap-1.5 text-sm text-slate-600 hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-400 transition-colors">
+                <Mail className="w-3.5 h-3.5 shrink-0" />
+                <span className="break-all">{personnel.email}</span>
+              </a>
+            )}
+            {personnel.contactNo && (
+              <a href={`tel:${personnel.contactNo}`} className="flex items-center gap-1.5 text-sm text-slate-600 hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-400 transition-colors">
+                <Phone className="w-3.5 h-3.5" />
+                <span>{personnel.contactNo}</span>
+              </a>
+            )}
+            <div className="ml-auto">
+              {renderLocationBadge()}
+            </div>
           </div>
         </div>
       </div>
