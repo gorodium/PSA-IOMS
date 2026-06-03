@@ -304,7 +304,7 @@ export async function sendChatMessageAction(formData: FormData): Promise<ChatAct
       channelId,
       senderUserId: user.id,
       messageType: ChatMessageType.USER_MESSAGE,
-      body: body || (attachment ? `Attached ${attachment.fileName}` : ""),
+      body: body || (attachment && !attachment.mimeType.startsWith('image/') ? `Attached ${attachment.fileName}` : ""),
       ...(attachment
         ? {
             attachments: {

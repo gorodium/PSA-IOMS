@@ -74,17 +74,19 @@ function AttachmentPreview({ attachment }: { attachment: { fileName: string; fil
             <iframe src={`${safeUrl}#toolbar=0&navpanes=0`} title={attachment.fileName} className="h-32 w-full bg-white" />
           </div>
         )}
-        <a href={safeUrl} target="_blank" rel="noreferrer" className="flex items-center gap-2 p-2 hover:bg-muted/50 transition">
-          <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded bg-primary/10 text-primary">
-            <Icon className="h-3.5 w-3.5" />
-          </div>
-          <div className="flex-1 truncate font-medium text-left">
-            {attachment.fileName}
-          </div>
-          <div className="text-muted-foreground">
-            {formatFileSize(attachment.fileSize)}
-          </div>
-        </a>
+        {!isImage && (
+          <a href={safeUrl} target="_blank" rel="noreferrer" className="flex items-center gap-2 p-2 hover:bg-muted/50 transition">
+            <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded bg-primary/10 text-primary">
+              <Icon className="h-3.5 w-3.5" />
+            </div>
+            <div className="flex-1 truncate font-medium text-left">
+              {attachment.fileName}
+            </div>
+            <div className="text-muted-foreground">
+              {formatFileSize(attachment.fileSize)}
+            </div>
+          </a>
+        )}
       </div>
       {isImage && (
         <ChatImageLightbox 

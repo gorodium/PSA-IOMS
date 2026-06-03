@@ -129,9 +129,11 @@ export function ChatMessageItem({
             <p className="italic text-muted-foreground opacity-75 text-xs">{message.senderName} unsent a message</p>
           ) : (
             <>
-              <p className="whitespace-pre-wrap break-words leading-relaxed">
-                {parseCustomEmojis(message.body, customEmojis)}
-              </p>
+              {(!message.attachments?.some(a => a.mimeType.startsWith('image/') && message.body === `Attached ${a.fileName}`)) && (
+                <p className="whitespace-pre-wrap break-words leading-relaxed">
+                  {parseCustomEmojis(message.body, customEmojis)}
+                </p>
+              )}
               {children}
             </>
           )}
