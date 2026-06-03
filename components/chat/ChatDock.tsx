@@ -56,16 +56,16 @@ function AttachmentPreview({ attachment }: { attachment: { fileName: string; fil
 
   return (
     <>
-      <div className="mt-1.5 overflow-hidden rounded-md border bg-background text-xs shadow-sm transition-all">
+      <div className={`mt-1.5 overflow-hidden transition-all ${isImage ? 'rounded-lg' : 'rounded-md border bg-background text-xs shadow-sm'}`}>
         {isImage && (
-          <button type="button" onClick={() => setLightboxOpen(true)} className="block border-b bg-muted/30 w-full cursor-zoom-in relative">
+          <button type="button" onClick={() => setLightboxOpen(true)} className="block w-full cursor-zoom-in relative">
             <Image
               src={safeUrl}
               alt={attachment.fileName}
               width={760}
               height={428}
               unoptimized
-              className="max-h-32 w-full object-contain"
+              className="max-h-[300px] w-auto max-w-full rounded-lg object-contain"
             />
           </button>
         )}
@@ -172,6 +172,28 @@ export function ChatDock({ canManageChat, defaultOpen = false }: ChatDockProps) 
   const [snapshot, setSnapshot] = useState<ChatSnapshot | null>(null);
   const [selectedChannelId, setSelectedChannelId] = useState<string | null>(null);
   const [messageBody, setMessageBody] = useState("");
+  const [isDragging, setIsDragging] = useState(false);
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    // Only set dragging to false if we're leaving the main container
+    if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+      setIsDragging(false);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      setSelectedFile(e.dataTransfer.files[0]);
+    }
+  };
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [showEmoticons, setShowEmoticons] = useState(false);
   const [showChannelDropdown, setShowChannelDropdown] = useState(false);
@@ -313,7 +335,20 @@ export function ChatDock({ canManageChat, defaultOpen = false }: ChatDockProps) 
   }
 
   return (
-    <section className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-50 flex h-[min(600px,85vh)] w-[min(380px,calc(100vw-2rem))] flex-col overflow-hidden rounded-xl border border-border/50 bg-background shadow-2xl animate-in slide-in-from-bottom-10 duration-200">
+    <section 
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+      className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-50 flex h-[min(600px,85vh)] w-[min(380px,calc(100vw-2rem))] flex-col overflow-hidden rounded-xl border border-border/50 bg-background shadow-2xl animate-in slide-in-from-bottom-10 duration-200"
+    >
+      {isDragging && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-background/90 backdrop-blur-sm border-2 border-dashed border-primary rounded-xl m-2">
+          <div className="flex flex-col items-center text-primary pointer-events-none">
+            <Paperclip className="h-10 w-10 mb-2 animate-bounce" />
+            <p className="font-medium">Drop file to attach</p>
+          </div>
+        </div>
+      )}
       <header className="relative flex shrink-0 flex-col border-b bg-muted/20">
         <div className="flex items-center justify-between px-3 py-2.5">
           <div className="relative flex-1" ref={dropdownRef}>
@@ -456,7 +491,7 @@ export function ChatDock({ canManageChat, defaultOpen = false }: ChatDockProps) 
             onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); if (selectedChannelIdRef.current && (messageBody.trim() || selectedFile)) chatFormRef.current?.requestSubmit(); } }}
             disabled={!selectedChannelId}
             placeholder={selectedChannelId ? "Type a message..." : "Select a channel"}
-            className="min-h-[44px] max-h-[120px] w-full resize-none border-0 bg-transparent py-2.5 px-3 text-[13px] focus-visible:ring-0"
+            className="min-h-[44px] max-h-[120px] w-full resize-none border-0 bg-transparent py-2.5 px-3 text-[13px] text-foreground dark:text-gray-100 focus-visible:ring-0"
           />
           
           <div className="flex items-center justify-between px-2 py-1.5 bg-muted/5 border-t">
