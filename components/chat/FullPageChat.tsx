@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
+import { ChatImageLightbox } from "./ChatImageLightbox";
 
 const emoticons = ["🙂", "😊", "👍", "👏", "🙏", "✅", "📌", "⚠️", "🎉", "😂", "❤️", "💡"];
 
@@ -156,6 +157,7 @@ export function FullPageChat() {
   const [messageBody, setMessageBody] = useState("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [lightboxImage, setLightboxImage] = useState<{url: string; alt: string} | null>(null);
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -429,7 +431,8 @@ export function FullPageChat() {
                       <img
                         src={message.senderPhotoUrl}
                         alt={message.senderName}
-                        className="h-9 w-9 lg:h-10 lg:w-10 rounded-md object-cover shadow-sm border border-border/50"
+                        onClick={(e) => { e.stopPropagation(); setLightboxImage({ url: message.senderPhotoUrl!, alt: `${message.senderName}'s Profile` }); }}
+                        className="h-9 w-9 lg:h-10 lg:w-10 rounded-md object-cover shadow-sm border border-border/50 cursor-zoom-in hover:opacity-90 transition-opacity"
                       />
                     ) : (
                       <div className="flex h-9 w-9 lg:h-10 lg:w-10 items-center justify-center rounded-md bg-primary/10 text-sm font-bold text-primary border border-primary/20">
@@ -579,7 +582,12 @@ export function FullPageChat() {
           <div className="flex-1 overflow-y-auto p-5">
             <div className="mb-6 flex flex-col items-center text-center">
               {selectedMessage.senderPhotoUrl ? (
-                <img src={selectedMessage.senderPhotoUrl} alt="Avatar" className="mb-3 h-14 w-14 rounded-md object-cover shadow-sm border border-border" />
+                <img 
+                  src={selectedMessage.senderPhotoUrl} 
+                  alt="Avatar" 
+                  onClick={(e) => { e.stopPropagation(); setLightboxImage({ url: selectedMessage.senderPhotoUrl!, alt: `${selectedMessage.senderName}'s Profile` }); }}
+                  className="mb-3 h-14 w-14 rounded-md object-cover shadow-sm border border-border cursor-zoom-in hover:opacity-90 transition-opacity" 
+                />
               ) : (
                 <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-md bg-primary/10 text-lg font-bold text-primary border border-primary/20">
                   {selectedMessage.senderName.charAt(0).toUpperCase()}
@@ -657,6 +665,15 @@ export function FullPageChat() {
             )}
           </div>
         </aside>
+      )}
+
+      {lightboxImage && (
+        <ChatImageLightbox
+          isOpen={!!lightboxImage}
+          onClose={() => setLightboxImage(null)}
+          imageUrl={lightboxImage.url}
+          altText={lightboxImage.alt}
+        />
       )}
     </div>
   );

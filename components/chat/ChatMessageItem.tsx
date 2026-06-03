@@ -9,7 +9,7 @@ import { unsendChatMessageAction, toggleChatReactionAction, type ChatSnapshot } 
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import {
+import { ChatImageLightbox } from "./ChatImageLightbox";
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -70,6 +70,7 @@ export function ChatMessageItem({
 }) {
   const [isPending, startTransition] = useTransition();
   const [isReactionPickerOpen, setIsReactionPickerOpen] = useState(false);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
 
   useEffect(() => {
     if (!isReactionPickerOpen) return;
@@ -110,7 +111,10 @@ export function ChatMessageItem({
     <article className={cn("group relative flex w-full gap-2.5 rounded-lg px-2 py-1.5 transition-colors", message.isOwnMessage ? "bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/50 dark:hover:bg-blue-900/50" : "hover:bg-muted/40")}>
       <div className="shrink-0 mt-0.5">
         {message.senderPhotoUrl ? (
-          <img src={message.senderPhotoUrl} alt={message.senderName} className="h-8 w-8 rounded-md object-cover shadow-sm border border-border/50" />
+          <>
+            <img src={message.senderPhotoUrl} alt={message.senderName} className="h-8 w-8 rounded-md object-cover shadow-sm border border-border/50 cursor-zoom-in hover:opacity-90 transition-opacity" onClick={(e) => { e.stopPropagation(); setLightboxOpen(true); }} />
+            <ChatImageLightbox isOpen={lightboxOpen} onClose={() => setLightboxOpen(false)} imageUrl={message.senderPhotoUrl} altText={`${message.senderName}'s Profile`} />
+          </>
         ) : (
           <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary/10 text-xs font-bold text-primary border border-primary/20">
             {message.senderName.charAt(0).toUpperCase()}
