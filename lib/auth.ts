@@ -117,7 +117,7 @@ export async function createUserSession(userId: string) {
 
   cookieStore.set(sessionCookieName, createSessionToken(userId), {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
+    secure: process.env.NODE_ENV === "production" && process.env.REQUIRE_HTTPS === "true",
     sameSite: "lax",
     maxAge: sessionMaxAgeSeconds,
     path: "/"
