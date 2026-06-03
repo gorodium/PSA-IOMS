@@ -191,7 +191,13 @@ export function ChatDock({ canManageChat, defaultOpen = false }: ChatDockProps) 
     e.preventDefault();
     setIsDragging(false);
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      setSelectedFile(e.dataTransfer.files[0]);
+      const file = e.dataTransfer.files[0];
+      setSelectedFile(file);
+      if (fileInputRef.current) {
+        const dt = new DataTransfer();
+        dt.items.add(file);
+        fileInputRef.current.files = dt.files;
+      }
     }
   };
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -473,12 +479,18 @@ export function ChatDock({ canManageChat, defaultOpen = false }: ChatDockProps) 
           )}
           
           {selectedFile && (
-            <div className="flex items-center justify-between gap-2 border-b bg-muted/20 px-2.5 py-1.5 text-[11px]">
-              <span className="min-w-0 truncate font-medium flex items-center gap-1.5">
-                <Paperclip className="h-3 w-3 text-muted-foreground" />
-                {selectedFile.name}
-              </span>
-              <Button type="button" size="sm" variant="ghost" className="h-5 px-1.5 text-muted-foreground hover:text-foreground" onClick={() => { setSelectedFile(null); if (fileInputRef.current) fileInputRef.current.value = ""; }}>
+            <div className="flex items-center gap-2 border-b bg-muted/20 px-2.5 py-1.5 text-[11px] relative">
+              {selectedFile.type.startsWith('image/') ? (
+                <div className="relative h-12 w-12 overflow-hidden rounded border bg-black/5">
+                  <img src={URL.createObjectURL(selectedFile)} alt="Preview" className="h-full w-full object-cover" />
+                </div>
+              ) : (
+                <span className="min-w-0 truncate font-medium flex items-center gap-1.5 flex-1">
+                  <Paperclip className="h-3 w-3 text-muted-foreground" />
+                  {selectedFile.name}
+                </span>
+              )}
+              <Button type="button" size="sm" variant="ghost" className="absolute right-1.5 top-1.5 h-5 w-5 p-0 rounded-full bg-background/80 text-muted-foreground hover:text-foreground shadow-sm hover:bg-background" onClick={() => { setSelectedFile(null); if (fileInputRef.current) fileInputRef.current.value = ""; }}>
                 <X className="h-3 w-3" />
               </Button>
             </div>
