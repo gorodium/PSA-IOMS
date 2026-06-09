@@ -15,7 +15,7 @@ import { NotificationBadge } from "@/components/ui/notification-badge";
 const emoticons = ["🙂", "😊", "👍", "👏", "🙏", "✅", "📌", "⚠️", "🎉", "😂", "❤️", "💡", "🔥", "💯", "🤔", "👀", "✨", "🚀", "😎", "🥳", "🤝", "💪"];
 
 // ── GIF search using Tenor public API ─────────────────────────────────────────
-const TENOR_KEY = "AIzaSyDLm-rf3DoJy9cR_3dAGdYD0SbmOKv7gjg"; // reuses existing Google key
+const TENOR_KEY = process.env.NEXT_PUBLIC_TENOR_API_KEY || "";
 const TENOR_SEARCH_URL = "https://tenor.googleapis.com/v2/search";
 const TENOR_FEATURED_URL = "https://tenor.googleapis.com/v2/featured";
 
