@@ -3,11 +3,13 @@ import { notFound } from "next/navigation";
 import { ArrowLeft, FileText } from "lucide-react";
 import { ConfirmReplaceButton } from "@/components/convocation/ConfirmReplaceButton";
 import { ReplaceMessageSpeakerButton } from "@/components/convocation/ReplaceMessageSpeakerButton";
+import { ConfirmPostponeButton } from "@/components/convocation/ConfirmPostponeButton";
 import { ConvocationStatusBadge } from "@/components/convocation/ConvocationStatusBadge";
 import {
   deleteUpcomingConvocationProgramAction,
   finalizeConvocationProgramAction,
-  overrideFinalizedConvocationAssignmentAction
+  overrideFinalizedConvocationAssignmentAction,
+  postponeConvocationProgramAction
 } from "@/app/(app)/convocation/actions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -143,6 +145,11 @@ export default async function ConvocationDetailPage({ params }: ConvocationDetai
           {isAdmin && (
             <form action={finalizeConvocationProgramAction.bind(null, program.id)}>
               <Button type="submit">Finalize</Button>
+            </form>
+          )}
+          {isAdmin && (
+            <form action={postponeConvocationProgramAction.bind(null, program.id)}>
+              <ConfirmPostponeButton />
             </form>
           )}
           {isAdmin && program.status !== ConvocationProgramStatus.FINALIZED && (

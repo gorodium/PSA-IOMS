@@ -50,7 +50,7 @@ export function ProfileForm({ initialName, initialPhotoUrl }: { initialName: str
     }
   };
 
-  const onCropComplete = useCallback((croppedArea: any, croppedAreaPixels: any) => {
+  const onCropComplete = useCallback((croppedArea: unknown, croppedAreaPixels: { width: number; height: number; x: number; y: number }) => {
     setCroppedAreaPixels(croppedAreaPixels);
   }, []);
 
@@ -163,8 +163,8 @@ export function ProfileForm({ initialName, initialPhotoUrl }: { initialName: str
                 placeholder="e.g. System Administrator"
                 required
               />
-              <p className="text-[11px] text-muted-foreground">
-                This name will be displayed in the internal chat and system logs.
+              <p className="text-[0.8rem] text-muted-foreground mt-2">
+                This name will be displayed in the chat and system logs.
               </p>
             </div>
           </div>

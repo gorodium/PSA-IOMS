@@ -9,8 +9,8 @@ export default async function ChatPage() {
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-2xl font-semibold tracking-normal text-slate-950 dark:text-slate-50">
-          Internal Chat
+        <h1 className="text-2xl font-bold tracking-tight">
+          IOMS Connect
         </h1>
         <p className="text-sm text-muted-foreground">
           Full-window channel messaging with search, attachments, and request notifications.

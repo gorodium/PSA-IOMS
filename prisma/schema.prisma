@@ -87,6 +87,7 @@ enum RoomReservationStatus {
 
 enum RoomReservationType {
   HALF_DAY
+  SINGLE_DAY
   MULTIPLE_DAYS
 }
 
@@ -114,6 +115,8 @@ enum ChatChannelType {
   PRIVATE
   SYSTEM
   ADMIN_REQUESTS
+  DIRECT
+  ADMIN_FEEDBACK
 }
 
 enum ChatChannelMemberRole {
@@ -181,6 +184,7 @@ model User {
   createdCustomEmojis      CustomEmoji[]        @relation("CustomEmojiCreatedBy")
   chatReactions            ChatReaction[]       @relation("UserChatReactions")
   createdPdfTemplates      PdfTemplate[]        @relation("PdfTemplateCreatedBy")
+  createdNetworkMaps       NetworkMap[]         @relation("NetworkMapCreatedBy")
 
   @@index([role])
   @@index([isActive])
@@ -218,6 +222,8 @@ model Personnel {
   convocationGroupMembers  ConvocationGroupMember[]
   convocationAssignments   ConvocationProgramItem[]       @relation("ConvocationItemAssignee")
   convocationHistory       ConvocationAssignmentHistory[]
+  employeeSeats            EmployeeSeat[]
+  networkDevices           NetworkDevice[]
 
   @@index([section])
   @@index([isActive])
@@ -732,6 +738,7 @@ model ChatChannel {
   description String?
   channelType ChatChannelType     @default(GENERAL)
   createdById String?
+  photoUrl    String?
   createdBy   User?               @relation("ChatChannelCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
   isActive    Boolean             @default(true)
   members     ChatChannelMember[]
@@ -858,4 +865,172 @@ model PdfTemplate {
   @@index([isActive])
   @@index([templateFeature])
   @@index([createdById])
+}
+
+// ── ICT Infrastructure Map ────────────────────────────────────────────────────
+
+enum MapFurnitureType {
+  DESK
+  COMPUTER_DESK
+  CABINET
+  TABLE
+  CHAIR
+  SERVER_RACK
+  PRINTER_STATION
+  RECEPTION
+  WALL
+  PARTITION
+  OTHER
+}
+
+enum NetworkDeviceType {
+  DESKTOP
+  LAPTOP
+  PRINTER
+  ACCESS_POINT
+  SWITCH
+  ROUTER
+  FIREWALL
+  SERVER
+  IP_PHONE
+  CCTV
+  OTHER
+}
+
+enum NetworkDeviceStatus {
+  ONLINE
+  OFFLINE
+  WARNING
+  UNKNOWN
+}
+
+enum NetworkConnectionType {
+  LAN
+  WIFI
+  FIBER
+  USB
+  BLUETOOTH
+  OTHER
+}
+
+model NetworkMap {
+  id          String        @id @default(cuid())
+  name        String
+  description String?
+  imageUrl    String?
+  isActive    Boolean       @default(false)
+  isLocked    Boolean       @default(false)
+  createdById String?
+  createdBy   User?         @relation("NetworkMapCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  furniture   MapFurniture[]
+  seats       EmployeeSeat[]
+  devices     NetworkDevice[]
+  connections NetworkConnection[]
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  @@index([isActive])
+  @@index([createdById])
+}
+
+model MapFurniture {
+  id            String          @id @default(cuid())
+  mapId         String
+  furnitureCode String
+  furnitureName String
+  type          MapFurnitureType @default(DESK)
+  xPercent      Float           @default(50)
+  yPercent      Float           @default(50)
+  widthPercent  Float           @default(5)
+  heightPercent Float           @default(3)
+  rotation      Float           @default(0)
+  section       String?
+  room          String?
+  label         String?
+  remarks       String?
+  map           NetworkMap      @relation(fields: [mapId], references: [id], onDelete: Cascade)
+  seats         EmployeeSeat[]
+  devices       NetworkDevice[]
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  @@index([mapId])
+}
+
+model EmployeeSeat {
+  id          String        @id @default(cuid())
+  mapId       String
+  furnitureId String?
+  personnelId String?
+  seatCode    String
+  xPercent    Float         @default(50)
+  yPercent    Float         @default(50)
+  section     String?
+  room        String?
+  remarks     String?
+  map         NetworkMap    @relation(fields: [mapId], references: [id], onDelete: Cascade)
+  furniture   MapFurniture? @relation(fields: [furnitureId], references: [id], onDelete: SetNull)
+  personnel   Personnel?    @relation(fields: [personnelId], references: [id], onDelete: SetNull)
+  devices     NetworkDevice[]
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  @@index([mapId])
+  @@index([personnelId])
+}
+
+model NetworkDevice {
+  id             String              @id @default(cuid())
+  mapId          String
+  furnitureId    String?
+  employeeSeatId String?
+  personnelId    String?
+  deviceCode     String
+  deviceName     String
+  type           NetworkDeviceType   @default(DESKTOP)
+  status         NetworkDeviceStatus @default(UNKNOWN)
+  hostname       String?
+  ipAddress      String?
+  macAddress     String?
+  section        String?
+  room           String?
+  xPercent       Float               @default(50)
+  yPercent       Float               @default(50)
+  lastSeenAt     DateTime?
+  remarks        String?
+  map            NetworkMap          @relation(fields: [mapId], references: [id], onDelete: Cascade)
+  furniture      MapFurniture?       @relation(fields: [furnitureId], references: [id], onDelete: SetNull)
+  employeeSeat   EmployeeSeat?       @relation(fields: [employeeSeatId], references: [id], onDelete: SetNull)
+  personnel      Personnel?          @relation(fields: [personnelId], references: [id], onDelete: SetNull)
+  sourceConnections NetworkConnection[] @relation("ConnectionSource")
+  targetConnections NetworkConnection[] @relation("ConnectionTarget")
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+
+  @@index([mapId])
+  @@index([personnelId])
+  @@index([status])
+  @@index([type])
+}
+
+model NetworkConnection {
+  id             String                @id @default(cuid())
+  mapId          String
+  sourceDeviceId String
+  targetDeviceId String
+  connectionType NetworkConnectionType @default(LAN)
+  sourcePort     String?
+  targetPort     String?
+  cableLabel     String?
+  isVerified     Boolean               @default(false)
+  remarks        String?
+  map            NetworkMap            @relation(fields: [mapId], references: [id], onDelete: Cascade)
+  sourceDevice   NetworkDevice         @relation("ConnectionSource", fields: [sourceDeviceId], references: [id], onDelete: Cascade)
+  targetDevice   NetworkDevice         @relation("ConnectionTarget", fields: [targetDeviceId], references: [id], onDelete: Cascade)
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
+
+  @@index([mapId])
+  @@index([sourceDeviceId])
+  @@index([targetDeviceId])
 }

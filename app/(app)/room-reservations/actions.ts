@@ -4,10 +4,6 @@ import { revalidatePath } from "next/cache";
 import { RoomReservationStatus, RoomReservationType } from "@prisma/client";
 import { requireUser } from "@/lib/auth";
 import { writeAuditLog } from "@/lib/audit";
-import {
-  postRoomReservationChatNotification,
-  postRoomReservationStatusChatUpdate
-} from "@/lib/chat";
 import { db } from "@/lib/db";
 import {
   findRoomReservationConflicts,
@@ -28,14 +24,6 @@ type ActionResult = {
 };
 
 const initialError = "Please check the reservation details.";
-
-async function runOptionalChatNotification(callback: () => Promise<void>) {
-  try {
-    await callback();
-  } catch {
-    // Chat notifications should never block the request workflow.
-  }
-}
 
 export async function createRoomReservationAction(_previousState: ActionResult, formData: FormData): Promise<ActionResult> {
   const user = await requireUser();
@@ -126,7 +114,6 @@ export async function createRoomReservationAction(_previousState: ActionResult, 
     entityId: reservation.id,
     newValueJson: reservation
   });
-  await runOptionalChatNotification(() => postRoomReservationChatNotification(reservation.id));
 
   revalidatePath("/room-reservations");
   revalidatePath("/room-reservations/admin");
@@ -198,20 +185,6 @@ export async function manageRoomReservationAction(_previousState: ActionResult, 
   });
 
   await syncRoomReservationCalendarEntry(updatedReservation.id);
-  const actionLabel = parsed.data.status === RoomReservationStatus.APPROVED
-    ? "Room reservation approved"
-    : parsed.data.status === RoomReservationStatus.REJECTED
-      ? "Room reservation rejected"
-      : parsed.data.status === RoomReservationStatus.CANCELLED
-        ? "Room reservation cancelled"
-        : "Room reservation updated";
-  await runOptionalChatNotification(() =>
-    postRoomReservationStatusChatUpdate({
-      reservationId: updatedReservation.id,
-      actorUserId: user.id,
-      actionLabel
-    })
-  );
   await writeAuditLog({
     userId: user.id,
     action: "UPDATE",
@@ -251,13 +224,6 @@ export async function cancelRoomReservationAction(reservationId: string): Promis
   });
 
   await syncRoomReservationCalendarEntry(updatedReservation.id);
-  await runOptionalChatNotification(() =>
-    postRoomReservationStatusChatUpdate({
-      reservationId: updatedReservation.id,
-      actorUserId: user.id,
-      actionLabel: "Room reservation cancelled"
-    })
-  );
   await writeAuditLog({
     userId: user.id,
     action: "CANCEL",

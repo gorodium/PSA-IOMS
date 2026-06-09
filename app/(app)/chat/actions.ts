@@ -35,6 +35,12 @@ export type ChatSnapshot = {
     channelType: string;
     channelTypeLabel: string;
     unreadCount: number;
+    photoUrl: string | null;
+    latestMessage: {
+      body: string;
+      createdAt: string;
+      senderName: string;
+    } | null;
   }>;
   selectedChannelId: string | null;
   totalUnread: number;
@@ -102,15 +108,24 @@ async function getUnreadCount(channelId: string, userId: string) {
 const allowedAttachmentTypes = new Map([
   ["image/jpeg", "jpg"],
   ["image/png", "png"],
+  ["image/gif", "gif"],
+  ["image/webp", "webp"],
   ["application/pdf", "pdf"],
   ["application/msword", "doc"],
   ["application/vnd.openxmlformats-officedocument.wordprocessingml.document", "docx"],
   ["application/vnd.ms-excel", "xls"],
   ["application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "xlsx"],
   ["application/vnd.ms-powerpoint", "ppt"],
-  ["application/vnd.openxmlformats-officedocument.presentationml.presentation", "pptx"]
+  ["application/vnd.openxmlformats-officedocument.presentationml.presentation", "pptx"],
+  ["text/plain", "txt"],
+  ["video/mp4", "mp4"],
+  ["video/webm", "webm"],
+  ["audio/mpeg", "mp3"],
+  ["audio/wav", "wav"],
+  ["application/zip", "zip"],
+  ["application/x-zip-compressed", "zip"]
 ]);
-const maxAttachmentBytes = 10 * 1024 * 1024;
+const maxAttachmentBytes = 100 * 1024 * 1024;
 
 async function saveChatAttachmentFile(file: File | null) {
   if (!file || file.size === 0) {
@@ -118,11 +133,11 @@ async function saveChatAttachmentFile(file: File | null) {
   }
 
   if (!allowedAttachmentTypes.has(file.type)) {
-    throw new Error("Only JPG, JPEG, PNG, PDF, Word, Excel, and PowerPoint files can be attached.");
+    throw new Error("Unsupported file type. You can attach images, GIFs, PDFs, Office documents, videos, audio, or ZIP files.");
   }
 
   if (file.size > maxAttachmentBytes) {
-    throw new Error("Attached files must be 10 MB or smaller.");
+    throw new Error("Attached files must be 100 MB or smaller.");
   }
 
   const safeBaseName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
@@ -139,6 +154,24 @@ async function saveChatAttachmentFile(file: File | null) {
   };
 }
 
+async function saveChannelPhotoFile(file: File | null) {
+  if (!file || file.size === 0) {
+    return null;
+  }
+  if (!file.type.startsWith("image/")) {
+    throw new Error("Only image files can be uploaded as profile pictures.");
+  }
+  if (file.size > maxAttachmentBytes) {
+    throw new Error("Profile picture must be 10 MB or smaller.");
+  }
+  const safeBaseName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+  const fileName = `${Date.now()}-${safeBaseName}`;
+  const uploadDir = path.join(process.cwd(), "public/uploads/channel");
+  await mkdir(uploadDir, { recursive: true });
+  await writeFile(path.join(uploadDir, fileName), Buffer.from(await file.arrayBuffer()));
+  return `/uploads/channel/${fileName}`;
+}
+
 export async function getChatSnapshotAction(selectedChannelId?: string | null, searchQuery?: string | null): Promise<ChatSnapshot> {
   const user = await requireUser();
   const search = searchQuery?.trim();
@@ -153,24 +186,90 @@ export async function getChatSnapshotAction(selectedChannelId?: string | null, s
     : channels[0]?.id ?? null;
 
   const channelsWithUnread = await Promise.all(
-    channels.map(async (channel) => ({
-      id: channel.id,
-      name: channel.name,
-      description: channel.description,
-      channelType: channel.channelType,
-      channelTypeLabel: chatChannelTypeLabel(channel.channelType),
-      unreadCount: await getUnreadCount(channel.id, user.id)
-    }))
+    channels.map(async (channel) => {
+      let displayName = channel.name;
+      let dmPhotoUrl: string | null = null;
+      if (channel.name.startsWith("DM_")) {
+        const otherMember = await db.chatChannelMember.findFirst({
+          where: { channelId: channel.id, userId: { not: user.id } },
+          include: { user: { include: { personnel: { select: { photoUrl: true } } } } }
+        });
+        if (otherMember?.user) {
+          displayName = `DM: ${otherMember.user.name}`;
+          dmPhotoUrl = otherMember.user.photoUrl ?? otherMember.user.personnel?.photoUrl ?? null;
+        }
+      } else if (channel.name.startsWith("DM: ")) {
+        // If it's the new format, try to extract just the other user's name
+        const names = channel.name.replace("DM: ", "").split(" & ");
+        const otherName = names.find(n => n !== user.name);
+        if (otherName) {
+          displayName = `DM: ${otherName}`;
+          const otherUser = await db.user.findFirst({
+            where: { name: otherName, isActive: true },
+            include: { personnel: { select: { photoUrl: true } } }
+          });
+          if (otherUser) {
+            dmPhotoUrl = otherUser.photoUrl ?? otherUser.personnel?.photoUrl ?? null;
+          }
+        }
+      }
+      const latestMsg = await db.chatMessage.findFirst({
+        where: { channelId: channel.id, deletedAt: null },
+        orderBy: { createdAt: "desc" },
+        select: {
+          body: true,
+          createdAt: true,
+          sender: {
+            select: {
+              name: true
+            }
+          }
+        }
+      });
+      return {
+        id: channel.id,
+        name: displayName,
+        description: channel.description,
+        channelType: channel.channelType,
+        channelTypeLabel: chatChannelTypeLabel(channel.channelType),
+        unreadCount: await getUnreadCount(channel.id, user.id),
+        photoUrl: dmPhotoUrl ?? channel.photoUrl,
+        latestMessage: latestMsg ? {
+          body: latestMsg.body,
+          createdAt: latestMsg.createdAt.toISOString(),
+          senderName: latestMsg.sender?.name ?? "System"
+        } : null
+      };
+    })
   );
-  channelsWithUnread.sort((first, second) => {
+  const channelsWithUnreadMap = new Map();
+  for (const channel of channelsWithUnread) {
+    if (channel.name.startsWith("DM: ")) {
+      const existing = channelsWithUnreadMap.get(channel.name);
+      if (existing) {
+        if (!existing.latestMessage && channel.latestMessage) {
+          channelsWithUnreadMap.set(channel.name, channel);
+        } else if (existing.latestMessage && channel.latestMessage) {
+          if (new Date(channel.latestMessage.createdAt).getTime() > new Date(existing.latestMessage.createdAt).getTime()) {
+            channelsWithUnreadMap.set(channel.name, channel);
+          }
+        }
+      } else {
+        channelsWithUnreadMap.set(channel.name, channel);
+      }
+    } else {
+      channelsWithUnreadMap.set(channel.id, channel);
+    }
+  }
+
+  const uniqueChannelsWithUnread = Array.from(channelsWithUnreadMap.values());
+  uniqueChannelsWithUnread.sort((first, second) => {
     if (first.channelType === "ADMIN_REQUESTS" && second.channelType !== "ADMIN_REQUESTS") {
       return -1;
     }
-
     if (second.channelType === "ADMIN_REQUESTS" && first.channelType !== "ADMIN_REQUESTS") {
       return 1;
     }
-
     return first.name.localeCompare(second.name);
   });
 
@@ -221,9 +320,9 @@ export async function getChatSnapshotAction(selectedChannelId?: string | null, s
   });
 
   return {
-    channels: channelsWithUnread,
+    channels: uniqueChannelsWithUnread,
     selectedChannelId: selectedChannel,
-    totalUnread: channelsWithUnread.reduce((sum, channel) => sum + channel.unreadCount, 0),
+    totalUnread: uniqueChannelsWithUnread.reduce((sum, channel) => sum + channel.unreadCount, 0),
     messages: messages
       .reverse()
       .map((message) => ({
@@ -245,7 +344,7 @@ export async function getChatSnapshotAction(selectedChannelId?: string | null, s
         })),
         createdAt: message.createdAt.toISOString(),
         edited: message.updatedAt > message.createdAt,
-        reactions: (message as any).reactions?.map((r: any) => ({
+        reactions: (message as unknown as { reactions: Array<{ id: string; userId: string; user: { name: string }; emoji: string | null; customEmojiId: string | null; customEmoji: { imageUrl: string; name: string } | null }> }).reactions?.map((r) => ({
           id: r.id,
           userId: r.userId,
           userName: r.user.name,
@@ -340,6 +439,7 @@ export async function createChatChannelAction(_previousState: ChatActionResult, 
   const name = String(formData.get("name") ?? "").trim();
   const description = String(formData.get("description") ?? "").trim();
   const channelTypeValue = String(formData.get("channelType") ?? "GENERAL") as ChatChannelType;
+  const photoFile = formData.get("photo") as File | null;
 
   if (!name || name.length < 2) {
     return { ok: false, message: "Channel name is required." };
@@ -349,11 +449,21 @@ export async function createChatChannelAction(_previousState: ChatActionResult, 
     return { ok: false, message: "Choose a valid channel type." };
   }
 
+  let photoUrl = null;
+  if (photoFile && photoFile.size > 0) {
+    try {
+      photoUrl = await saveChannelPhotoFile(photoFile);
+    } catch (err) {
+      return { ok: false, message: err instanceof Error ? err.message : "Failed to upload photo." };
+    }
+  }
+
   const channel = await db.chatChannel.create({
     data: {
       name,
       description: description || null,
       channelType: channelTypeValue,
+      photoUrl,
       createdById: user.id,
       members: {
         create: {
@@ -378,6 +488,7 @@ export async function updateChatChannelAction(_previousState: ChatActionResult, 
   const name = String(formData.get("name") ?? "").trim();
   const description = String(formData.get("description") ?? "").trim();
   const channelTypeValue = String(formData.get("channelType") ?? "GENERAL") as ChatChannelType;
+  const photoFile = formData.get("photo") as File | null;
 
   const channel = await db.chatChannel.findUnique({ where: { id: channelId } });
   if (!channel) {
@@ -404,12 +515,22 @@ export async function updateChatChannelAction(_previousState: ChatActionResult, 
     return { ok: false, message: "Choose a valid channel type." };
   }
 
+  let photoUrl = channel.photoUrl;
+  if (photoFile && photoFile.size > 0) {
+    try {
+      photoUrl = await saveChannelPhotoFile(photoFile);
+    } catch (err) {
+      return { ok: false, message: err instanceof Error ? err.message : "Failed to upload photo." };
+    }
+  }
+
   await db.chatChannel.update({
     where: { id: channel.id },
     data: {
       name,
       description: description || null,
-      channelType: channelTypeValue
+      channelType: channelTypeValue,
+      photoUrl
     }
   });
 
@@ -644,3 +765,76 @@ export async function toggleChatReactionAction(messageId: string, emoji: string 
   }
 }
 
+export async function searchChatUsersAction(query: string) {
+  const user = await requireUser();
+  if (!query || query.length < 2) return [];
+  const results = await db.user.findMany({
+    where: {
+      isActive: true,
+      id: { not: user.id },
+      name: { contains: query, mode: "insensitive" }
+    },
+    select: { 
+      id: true, 
+      name: true, 
+      email: true, 
+      photoUrl: true,
+      personnel: {
+        select: { photoUrl: true }
+      }
+    },
+    take: 10
+  });
+
+  return results.map(u => ({
+    id: u.id,
+    name: u.name,
+    email: u.email,
+    photoUrl: u.photoUrl ?? u.personnel?.photoUrl ?? null
+  }));
+}
+
+export async function createDirectMessageAction(targetUserId: string) {
+  const user = await requireUser();
+  
+  const channelsWhereUserIsMember = await db.chatChannelMember.findMany({
+    where: { userId: user.id },
+    select: { channelId: true }
+  });
+  
+  const existing = await db.chatChannel.findFirst({
+    where: {
+      id: { in: channelsWhereUserIsMember.map((c) => c.channelId) },
+      channelType: "PRIVATE",
+      members: {
+        some: { userId: targetUserId },
+        every: {
+          userId: { in: [user.id, targetUserId] }
+        }
+      }
+    }
+  });
+
+  if (existing) {
+    return { ok: true, channelId: existing.id };
+  }
+
+  const targetUser = await db.user.findUnique({ where: { id: targetUserId } });
+  if (!targetUser) return { ok: false, message: "User not found." };
+
+  const newChannel = await db.chatChannel.create({
+    data: {
+      name: `DM: ${user.name} & ${targetUser.name}`,
+      channelType: "PRIVATE",
+      createdById: user.id,
+      members: {
+        create: [
+          { userId: user.id, role: ChatChannelMemberRole.OWNER },
+          { userId: targetUser.id, role: ChatChannelMemberRole.MEMBER }
+        ]
+      }
+    }
+  });
+
+  return { ok: true, channelId: newChannel.id };
+}

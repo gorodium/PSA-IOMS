@@ -16,7 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
 interface Props {
-  initialData: any[];
+  initialData: Record<string, unknown>[];
 }
 
 export function SpecialOrderClient({ initialData }: Props) {
@@ -24,7 +24,7 @@ export function SpecialOrderClient({ initialData }: Props) {
   const [isCommitting, setIsCommitting] = useState(false);
   const [previewResult, setPreviewResult] = useState<SyncResult | null>(null);
   const [showPreview, setShowPreview] = useState(false);
-  const [personnelModalSO, setPersonnelModalSO] = useState<any | null>(null);
+  const [personnelModalSO, setPersonnelModalSO] = useState<Record<string, unknown> | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   type SortField = 'soNumber' | 'referenceNo' | 'purpose' | 'destination' | 'activityDate' | 'personnel';
@@ -48,7 +48,7 @@ export function SpecialOrderClient({ initialData }: Props) {
       let matchesMonth = true;
       if (monthFilter) {
         if (so.activityDateString) {
-           matchesMonth = so.activityDateString.toLowerCase().includes(monthFilter.toLowerCase());
+           matchesMonth = String(so.activityDateString).toLowerCase().includes(monthFilter.toLowerCase());
         } else if (so.activityDate) {
            matchesMonth = format(new Date(so.activityDate), "MMMM").toLowerCase().includes(monthFilter.toLowerCase());
         } else {
@@ -59,7 +59,7 @@ export function SpecialOrderClient({ initialData }: Props) {
       let matchesEmployee = true;
       if (employeeFilter) {
         if (so.people) {
-           matchesEmployee = so.people.some((p: any) => 
+           matchesEmployee = (so.people as { originalName: string, personnel?: { fullName?: string } }[]).some((p) => 
              p.originalName.toLowerCase().includes(employeeFilter.toLowerCase()) || 
              (p.personnel?.fullName && p.personnel.fullName.toLowerCase().includes(employeeFilter.toLowerCase()))
            );
@@ -102,8 +102,8 @@ export function SpecialOrderClient({ initialData }: Props) {
       } else {
         setError(res.error || "Failed to fetch data.");
       }
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
     } finally {
       setIsFetching(false);
     }
@@ -122,8 +122,8 @@ export function SpecialOrderClient({ initialData }: Props) {
       } else {
         setError(res.error || "Failed to commit changes.");
       }
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
     } finally {
       setIsCommitting(false);
     }
@@ -193,7 +193,7 @@ export function SpecialOrderClient({ initialData }: Props) {
               {sortedData.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="px-4 py-8 text-center text-slate-500">
-                    No Special Orders found. Click "Sync from Sheet" to load data.
+                    No Special Orders found. Click &quot;Sync from Sheet&quot; to load data.
                   </td>
                 </tr>
               ) : (
@@ -260,7 +260,7 @@ export function SpecialOrderClient({ initialData }: Props) {
           <div className="max-h-[60vh] overflow-y-auto mt-4 space-y-1">
             {personnelModalSO?.people && personnelModalSO.people.length > 0 ? (
               <ul className="list-disc pl-5 space-y-1">
-                {personnelModalSO.people.map((p: any) => (
+                {(personnelModalSO.people as {id: string, originalName: string}[]).map((p) => (
                   <li key={p.id} className="text-sm text-slate-700 dark:text-slate-300">
                     {p.originalName}
                   </li>

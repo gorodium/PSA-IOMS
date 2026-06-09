@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { CalendarDays, FileText, ShieldCheck, Users } from "lucide-react";
 import { ConvocationProgramStatus } from "@prisma/client";
-import { deleteUpcomingConvocationProgramAction } from "@/app/(app)/convocation/actions";
+import { deleteUpcomingConvocationProgramAction, rescheduleLastTeamAction } from "@/app/(app)/convocation/actions";
+import { ConfirmRescheduleLastTeamButton } from "@/components/convocation/ConfirmRescheduleLastTeamButton";
 import { ConvocationStatusBadge } from "@/components/convocation/ConvocationStatusBadge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -124,10 +125,13 @@ export default async function ConvocationPage() {
             <div className="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">
               No upcoming convocation program has been generated yet.
               {isAdmin && (
-                <div className="mt-4">
+                <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
                   <Button asChild>
                     <Link href="/convocation/admin">Generate Program</Link>
                   </Button>
+                  <form action={rescheduleLastTeamAction}>
+                    <ConfirmRescheduleLastTeamButton />
+                  </form>
                 </div>
               )}
             </div>

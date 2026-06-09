@@ -13,7 +13,9 @@ import {
   FolderKanban,
   Settings,
   Users,
-  ActivitySquare
+  ActivitySquare,
+  Map,
+  Cpu
 } from "lucide-react";
 import type { AuthUser } from "@/lib/auth";
 import { checkUserPermission } from "@/lib/permissions";
@@ -67,6 +69,12 @@ export const navigationGroups: NavGroup[] = [
     items: [
       { name: "Administrative Reports", href: "/reports/administrative", icon: FileText },
       { name: "Special Orders", href: "/reports/special-order", icon: ClipboardList }
+    ]
+  },
+  {
+    label: "ICT Management",
+    items: [
+      { name: "ICT Infrastructure Map", href: "/ict-management/infrastructure-map", icon: Map }
     ]
   },
   {
@@ -135,8 +143,17 @@ export function AppSidebar({ user }: { user: AuthUser | null }) {
 
       <div className="border-t border-slate-200 p-4 dark:border-slate-800 bg-white dark:bg-slate-950">
         <div className="flex items-center gap-3 rounded-lg bg-slate-50 p-2 dark:bg-slate-900">
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary dark:bg-primary/20">
-            <Users className="h-4 w-4" />
+          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary dark:bg-primary/20 overflow-hidden">
+            {user && (user.photoUrl || user.personnel?.photoUrl) ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img 
+                src={(user.photoUrl || user.personnel?.photoUrl)?.startsWith('/uploads/') ? (user.photoUrl || user.personnel?.photoUrl)?.replace('/uploads/', '/api/file/') : (user.photoUrl || user.personnel?.photoUrl) || undefined} 
+                alt={user.name} 
+                className="h-full w-full object-cover" 
+              />
+            ) : (
+              <Users className="h-4 w-4" />
+            )}
           </div>
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-semibold text-slate-900 dark:text-slate-50">

@@ -80,7 +80,7 @@ function parseDate(dateStr: string): Date | null {
 
 function parseDateRanges(dateStr: string | undefined): { startDate: Date; endDate: Date }[] {
   if (!dateStr) return [];
-  let s = dateStr.replace(/\(.*?\)/g, "").trim();
+  const s = dateStr.replace(/\(.*?\)/g, "").trim();
   const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
   
   let currentYear = new Date().getFullYear();
@@ -90,7 +90,7 @@ function parseDateRanges(dateStr: string | undefined): { startDate: Date; endDat
   if (!tokens) return [];
 
   for (let i = tokens.length - 1; i >= 0; i--) {
-    let t = tokens[i];
+    const t = tokens[i];
     if (/^\d{4}$/.test(t)) {
       currentYear = parseInt(t);
     } else if (months.some(m => m.toLowerCase() === t.toLowerCase())) {
@@ -100,13 +100,13 @@ function parseDateRanges(dateStr: string | undefined): { startDate: Date; endDat
 
   currentYear = new Date().getFullYear();
   currentMonth = "";
-  let ranges: { startDate: Date; endDate: Date }[] = [];
+  const ranges: { startDate: Date; endDate: Date }[] = [];
   
   let pendingStart: Date | null = null;
   let expectingRangeEnd = false;
 
   for (let i = 0; i < tokens.length; i++) {
-    let t = tokens[i];
+    const t = tokens[i];
     if (/^\d{4}$/.test(t)) {
       currentYear = parseInt(t);
     } else if (months.some(m => m.toLowerCase() === t.toLowerCase())) {
@@ -343,9 +343,9 @@ export async function fetchSpecialOrdersPreview(): Promise<{ success: boolean; d
       }
     };
 
-  } catch (error: any) {
+  } catch (error) {
     console.error("Fetch error:", error);
-    return { success: false, error: error.message || "Unknown error occurred" };
+    return { success: false, error: error instanceof Error ? error.message : "Unknown error occurred" };
   }
 }
 
@@ -524,8 +524,8 @@ export async function commitSpecialOrders(previews: PreviewSO[]) {
     revalidatePath("/calendar");
     
     return { success: true, newCount, updatedCount, deletedCount };
-  } catch (error: any) {
+  } catch (error) {
     console.error("Commit error:", error);
-    return { success: false, error: error.message || "Unknown error" };
+    return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
   }
 }

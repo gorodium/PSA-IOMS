@@ -109,44 +109,134 @@ export function ChatMessageItem({
   }, [message.reactions, currentUserId]);
 
   return (
-    <article className={cn("group relative flex w-full gap-2.5 rounded-lg px-2 py-1.5 transition-colors", message.isOwnMessage ? "bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/50 dark:hover:bg-blue-900/50" : "hover:bg-muted/40")}>
-      <div className="shrink-0 mt-0.5">
+    <article className={cn("group relative flex w-full gap-2.5 py-1.5 transition-colors", message.isOwnMessage ? "flex-row-reverse" : "flex-row")}>
+      <div className="shrink-0 flex items-end">
         {message.senderPhotoUrl ? (
           <>
-            <img src={message.senderPhotoUrl} alt={message.senderName} className="h-8 w-8 rounded-md object-cover shadow-sm border border-border/50 cursor-zoom-in hover:opacity-90 transition-opacity" onClick={(e) => { e.stopPropagation(); setLightboxOpen(true); }} />
+            <img src={message.senderPhotoUrl} alt={message.senderName} className="h-9 w-9 rounded-full object-cover shadow-sm border border-border/50 cursor-zoom-in hover:opacity-90 transition-opacity" onClick={(e) => { e.stopPropagation(); setLightboxOpen(true); }} />
             <ChatImageLightbox isOpen={lightboxOpen} onClose={() => setLightboxOpen(false)} imageUrl={message.senderPhotoUrl} altText={`${message.senderName}'s Profile`} />
           </>
         ) : (
-          <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary/10 text-xs font-bold text-primary border border-primary/20">
+          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-sm font-bold text-primary border border-primary/20">
             {message.senderName.charAt(0).toUpperCase()}
           </div>
         )}
       </div>
-      <div className="min-w-0 flex-1">
-        <div className="flex items-baseline gap-1.5">
-          <span className="font-semibold text-xs text-foreground">{message.isOwnMessage ? "You" : message.senderName}</span>
-          <span className="text-[10px] text-muted-foreground" title={format(new Date(message.createdAt), "PPpp")}>
-            {formatDistanceToNow(new Date(message.createdAt), { addSuffix: true })}
-          </span>
-        </div>
-        <div className="mt-0.5 text-[13px] text-foreground/90">
-          {message.isUnsent ? (
-            <p className="italic text-muted-foreground opacity-75 text-xs">{message.senderName} unsent a message</p>
-          ) : (
-            <>
-              {(!message.attachments?.some(a => a.mimeType.startsWith('image/') && message.body === `Attached ${a.fileName}`)) && (
-                <p className="whitespace-pre-wrap break-words leading-relaxed">
-                  {parseCustomEmojis(message.body, customEmojis)}
-                </p>
+      <div className="min-w-0 flex-1 flex flex-col">
+        {!message.isOwnMessage && (
+          <div className="flex items-baseline gap-1.5 ml-1 mb-1">
+            <span className="font-semibold text-xs text-foreground">{message.senderName}</span>
+            <span className="text-[10px] text-muted-foreground" title={format(new Date(message.createdAt), "PPpp")}>
+              {formatDistanceToNow(new Date(message.createdAt), { addSuffix: true })}
+            </span>
+          </div>
+        )}
+        <div className={cn("flex items-center gap-2", message.isOwnMessage ? "flex-row-reverse" : "flex-row")}>
+          <div className={cn("text-[14px] px-3.5 py-2 w-fit max-w-[85%] break-words leading-relaxed", 
+            message.isOwnMessage ? "bg-slate-700 text-slate-50 dark:bg-slate-700 rounded-2xl rounded-tr-sm" : "bg-muted text-foreground rounded-2xl rounded-tl-sm"
+          )}>
+            {message.isUnsent ? (
+              <p className="italic opacity-75 text-xs text-center">Unsent a message</p>
+            ) : (
+              <>
+                {(!message.attachments?.some(a => a.mimeType.startsWith('image/') && message.body === `Attached ${a.fileName}`)) && (
+                  <p className="whitespace-pre-wrap">
+                    {parseCustomEmojis(message.body, customEmojis)}
+                  </p>
+                )}
+                {children}
+              </>
+            )}
+          </div>
+
+          {/* Hover Action Menu */}
+          {!message.isUnsent && (
+            <div className={cn("opacity-0 transition-opacity group-hover:opacity-100 flex items-center bg-background rounded-md shadow-sm border p-0.5 z-10 gap-0.5")}>
+              <Popover open={isReactionPickerOpen} onOpenChange={setIsReactionPickerOpen}>
+                <PopoverTrigger asChild>
+                  <button type="button" className="flex h-7 w-7 items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors">
+                    <Smile className="h-3.5 w-3.5" />
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent side="top" align="center" className="z-[100] w-64 p-0 shadow-xl bg-background border border-border" avoidCollisions={false}>
+                  <Tabs defaultValue="standard" className="w-full">
+                    <div className="bg-muted px-2 pt-2 border-b border-border">
+                      <TabsList className="h-7 bg-transparent p-0 w-full justify-start gap-4">
+                        <TabsTrigger value="standard" className="text-xs h-7 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-2 data-[state=active]:shadow-none">Standard</TabsTrigger>
+                        <TabsTrigger value="custom" className="text-xs h-7 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-2 data-[state=active]:shadow-none">Custom</TabsTrigger>
+                      </TabsList>
+                    </div>
+                    <TabsContent value="standard" className="p-2 m-0 grid grid-cols-6 gap-1">
+                      {REACTION_EMOJIS.map(emoji => (
+                        <button key={emoji} onClick={() => handleToggleReaction(emoji, null)} className="flex h-8 items-center justify-center rounded hover:bg-muted text-lg transition-transform hover:scale-110">
+                          {emoji}
+                        </button>
+                      ))}
+                    </TabsContent>
+                    <TabsContent value="custom" className="p-2 m-0 h-32 overflow-y-auto">
+                      {customEmojis.length === 0 ? (
+                        <div className="text-xs text-center text-muted-foreground pt-4">No custom emojis found.</div>
+                      ) : (
+                        <div className="grid grid-cols-5 gap-1">
+                          {customEmojis.map(ce => (
+                            <button key={ce.id} onClick={() => handleToggleReaction(null, ce.id)} title={`:${ce.name}:`} className="flex h-9 items-center justify-center rounded hover:bg-muted transition-transform hover:scale-110 p-1">
+                              <Image src={ce.imageUrl.startsWith('/uploads/') ? ce.imageUrl.replace('/uploads/', '/api/file/') : ce.imageUrl} alt={ce.name} width={24} height={24} unoptimized className="object-contain max-h-full" />
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </TabsContent>
+                  </Tabs>
+                </PopoverContent>
+              </Popover>
+              
+              {message.isOwnMessage && (
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <button type="button" className="flex h-7 w-7 items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-md transition-colors">
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Unsend Message</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Are you sure you want to unsend this message? 
+                        {currentUserRole === "SUPER_ADMIN" ? " As a System Administrator, you can hard delete this message to remove all traces." : " This will leave an 'unsent message' tombstone."}
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      {currentUserRole === "SUPER_ADMIN" && (
+                        <AlertDialogAction
+                          onClick={async () => {
+                            await unsendChatMessageAction(message.id, true);
+                            refreshChat(selectedChannelId);
+                          }}
+                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        >
+                          Hard Delete
+                        </AlertDialogAction>
+                      )}
+                      <AlertDialogAction
+                        onClick={async () => {
+                          await unsendChatMessageAction(message.id, false);
+                          refreshChat(selectedChannelId);
+                        }}
+                      >
+                        Unsend
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
               )}
-              {children}
-            </>
+            </div>
           )}
         </div>
         
         {/* Reactions Display */}
         {reactionGroups.length > 0 && !message.isUnsent && (
-          <div className="mt-1 flex flex-wrap gap-1">
+          <div className={cn("mt-1 flex flex-wrap gap-1", message.isOwnMessage ? "justify-end" : "justify-start")}>
             {reactionGroups.map((rg, idx) => (
               <button 
                 key={idx}
@@ -168,90 +258,6 @@ export function ChatMessageItem({
           </div>
         )}
       </div>
-
-      {/* Hover Action Menu */}
-      {!message.isUnsent && (
-        <div className="absolute right-2 top-2 opacity-0 transition-opacity group-hover:opacity-100 flex items-center bg-background rounded-md shadow-sm border p-0.5 z-10 gap-0.5">
-          <Popover open={isReactionPickerOpen} onOpenChange={setIsReactionPickerOpen}>
-            <PopoverTrigger asChild>
-              <button type="button" className="flex h-7 w-7 items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors">
-                <Smile className="h-3.5 w-3.5" />
-              </button>
-            </PopoverTrigger>
-            <PopoverContent side="top" align="end" className="w-64 p-0 shadow-xl bg-background border border-border" avoidCollisions={false}>
-              <Tabs defaultValue="standard" className="w-full">
-                <div className="bg-muted px-2 pt-2 border-b border-border">
-                  <TabsList className="h-7 bg-transparent p-0 w-full justify-start gap-4">
-                    <TabsTrigger value="standard" className="text-xs h-7 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-2 data-[state=active]:shadow-none">Standard</TabsTrigger>
-                    <TabsTrigger value="custom" className="text-xs h-7 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-2 data-[state=active]:shadow-none">Custom</TabsTrigger>
-                  </TabsList>
-                </div>
-                <TabsContent value="standard" className="p-2 m-0 grid grid-cols-6 gap-1">
-                  {REACTION_EMOJIS.map(emoji => (
-                    <button key={emoji} onClick={() => handleToggleReaction(emoji, null)} className="flex h-8 items-center justify-center rounded hover:bg-muted text-lg transition-transform hover:scale-110">
-                      {emoji}
-                    </button>
-                  ))}
-                </TabsContent>
-                <TabsContent value="custom" className="p-2 m-0 h-32 overflow-y-auto">
-                  {customEmojis.length === 0 ? (
-                    <div className="text-xs text-center text-muted-foreground pt-4">No custom emojis found.</div>
-                  ) : (
-                    <div className="grid grid-cols-5 gap-1">
-                      {customEmojis.map(ce => (
-                        <button key={ce.id} onClick={() => handleToggleReaction(null, ce.id)} title={`:${ce.name}:`} className="flex h-9 items-center justify-center rounded hover:bg-muted transition-transform hover:scale-110 p-1">
-                          <Image src={ce.imageUrl.startsWith('/uploads/') ? ce.imageUrl.replace('/uploads/', '/api/file/') : ce.imageUrl} alt={ce.name} width={24} height={24} unoptimized className="object-contain max-h-full" />
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </TabsContent>
-              </Tabs>
-            </PopoverContent>
-          </Popover>
-          
-          {message.isOwnMessage && (
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <button type="button" className="flex h-7 w-7 items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-md transition-colors">
-                  <Trash2 className="h-3.5 w-3.5" />
-                </button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Unsend Message</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Are you sure you want to unsend this message? 
-                    {currentUserRole === "SUPER_ADMIN" ? " As a System Administrator, you can hard delete this message to remove all traces." : " This will leave an 'unsent message' tombstone."}
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  {currentUserRole === "SUPER_ADMIN" && (
-                    <AlertDialogAction
-                      onClick={async () => {
-                        await unsendChatMessageAction(message.id, true);
-                        refreshChat(selectedChannelId);
-                      }}
-                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                    >
-                      Hard Delete
-                    </AlertDialogAction>
-                  )}
-                  <AlertDialogAction
-                    onClick={async () => {
-                      await unsendChatMessageAction(message.id, false);
-                      refreshChat(selectedChannelId);
-                    }}
-                  >
-                    Unsend
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          )}
-        </div>
-      )}
     </article>
   );
 }

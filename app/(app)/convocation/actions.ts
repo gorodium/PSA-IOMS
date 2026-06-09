@@ -14,6 +14,7 @@ import {
   formatMessageSpeaker,
   generateConvocationItems,
   getSuggestedGroupForMonday,
+  getNextMonday,
   isConvocationAdmin,
   normalizeConvocationDate,
   syncConvocationCalendarEntry
@@ -848,4 +849,147 @@ export async function replaceMessageSpeakerAction(itemId: string, personnelId: s
   revalidatePath("/convocation");
   revalidatePath(`/convocation/${item.programId}`);
   revalidatePath(`/convocation/${item.programId}/print`);
+}
+
+export async function postponeConvocationProgramAction(programId: string): Promise<void> {
+  const user = await requireConvocationAdmin();
+  const program = await db.convocationProgram.findUnique({
+    where: { id: programId },
+    include: {
+      calendarActivity: true,
+    }
+  });
+
+  if (!program) {
+    throw new Error("Convocation program could not be found.");
+  }
+
+  // Calculate the next Monday (add 7 days)
+  const nextMonday = addDays(program.convocationDate, 7);
+  
+  // Check if a program already exists for the new date
+  const existingProgram = await db.convocationProgram.findUnique({
+    where: { convocationDate: nextMonday }
+  });
+
+  if (existingProgram) {
+    throw new Error("A program already exists for the next Monday. Please archive or delete it first.");
+  }
+
+  await db.$transaction(async (tx) => {
+    // 1. Update ConvocationProgram date
+    await tx.convocationProgram.update({
+      where: { id: program.id },
+      data: { convocationDate: nextMonday }
+    });
+
+    // 2. Update ConvocationAssignmentHistory records
+    await tx.convocationAssignmentHistory.updateMany({
+      where: { programId: program.id },
+      data: { convocationDate: nextMonday }
+    });
+
+    // 3. Update CalendarActivity if it exists
+    if (program.calendarActivityId && program.calendarActivity) {
+      const descriptionSuffix = `\n[Postponed from ${program.convocationDate.toISOString().slice(0, 10)}]`;
+      await tx.calendarActivity.update({
+        where: { id: program.calendarActivityId },
+        data: { 
+          startDate: nextMonday,
+          endDate: nextMonday,
+          description: program.calendarActivity.description 
+            ? `${program.calendarActivity.description}${descriptionSuffix}` 
+            : descriptionSuffix
+        }
+      });
+    }
+  });
+
+  await writeAuditLog({
+    userId: user.id,
+    action: "POSTPONE",
+    entityType: "ConvocationProgram",
+    entityId: program.id,
+    oldValueJson: { convocationDate: program.convocationDate },
+    newValueJson: { convocationDate: nextMonday }
+  });
+
+  revalidatePath("/convocation");
+  revalidatePath("/convocation/admin");
+  revalidatePath(`/convocation/${program.id}`);
+  revalidatePath("/calendar");
+  redirect(`/convocation/${program.id}`);
+}
+
+export async function rescheduleLastTeamAction(): Promise<void> {
+  const user = await requireConvocationAdmin();
+  
+  // Find the most recent program (finalized or draft, usually finalized)
+  const lastProgram = await db.convocationProgram.findFirst({
+    where: { status: { not: ConvocationProgramStatus.ARCHIVED } },
+    orderBy: { convocationDate: "desc" },
+    include: { calendarActivity: true }
+  });
+
+  if (!lastProgram) {
+    throw new Error("No previous convocation program found to reschedule.");
+  }
+
+  const nextMonday = getNextMonday();
+
+  if (lastProgram.convocationDate >= nextMonday) {
+    throw new Error("The latest program is already scheduled for the upcoming Monday or later.");
+  }
+
+  const existingProgram = await db.convocationProgram.findUnique({
+    where: { convocationDate: nextMonday }
+  });
+
+  if (existingProgram) {
+    throw new Error("A program already exists for the next Monday. Please archive or delete it first.");
+  }
+
+  await db.$transaction(async (tx) => {
+    // Update ConvocationProgram date
+    await tx.convocationProgram.update({
+      where: { id: lastProgram.id },
+      data: { convocationDate: nextMonday }
+    });
+
+    // Update history records
+    await tx.convocationAssignmentHistory.updateMany({
+      where: { programId: lastProgram.id },
+      data: { convocationDate: nextMonday }
+    });
+
+    // Update CalendarActivity if it exists
+    if (lastProgram.calendarActivityId && lastProgram.calendarActivity) {
+      const descriptionSuffix = `\n[Rescheduled from ${lastProgram.convocationDate.toISOString().slice(0, 10)}]`;
+      await tx.calendarActivity.update({
+        where: { id: lastProgram.calendarActivityId },
+        data: { 
+          startDate: nextMonday,
+          endDate: nextMonday,
+          description: lastProgram.calendarActivity.description 
+            ? `${lastProgram.calendarActivity.description}${descriptionSuffix}` 
+            : descriptionSuffix
+        }
+      });
+    }
+  });
+
+  await writeAuditLog({
+    userId: user.id,
+    action: "RESCHEDULE_LAST",
+    entityType: "ConvocationProgram",
+    entityId: lastProgram.id,
+    oldValueJson: { convocationDate: lastProgram.convocationDate },
+    newValueJson: { convocationDate: nextMonday }
+  });
+
+  revalidatePath("/convocation");
+  revalidatePath("/convocation/admin");
+  revalidatePath(`/convocation/${lastProgram.id}`);
+  revalidatePath("/calendar");
+  redirect(`/convocation/${lastProgram.id}`);
 }

@@ -6,10 +6,6 @@ import path from "path";
 import { VehicleRequestStatus } from "@prisma/client";
 import { requireUser } from "@/lib/auth";
 import { writeAuditLog } from "@/lib/audit";
-import {
-  postVehicleRequestChatNotification,
-  postVehicleRequestStatusChatUpdate
-} from "@/lib/chat";
 import { db } from "@/lib/db";
 import {
   combineTravelDateTime,
@@ -29,14 +25,6 @@ type ActionResult = {
   ok: boolean;
   message: string;
 };
-
-async function runOptionalChatNotification(callback: () => Promise<void>) {
-  try {
-    await callback();
-  } catch {
-    // Chat notifications should never block the request workflow.
-  }
-}
 
 function formValues(formData: FormData) {
   return {
@@ -136,7 +124,6 @@ export async function createVehicleRequestAction(_previousState: ActionResult, f
     entityId: request.id,
     newValueJson: request
   });
-  await runOptionalChatNotification(() => postVehicleRequestChatNotification(request.id));
 
   revalidatePath("/vehicle-requests");
   revalidatePath("/vehicle-requests/admin");
@@ -245,22 +232,6 @@ export async function manageVehicleRequestAction(_previousState: ActionResult, f
   });
 
   await syncVehicleRequestCalendarEntry(updatedRequest.id);
-  const actionLabel = parsed.data.status === VehicleRequestStatus.APPROVED
-    ? "Approved"
-    : parsed.data.status === VehicleRequestStatus.REJECTED
-      ? "Rejected"
-      : parsed.data.status === VehicleRequestStatus.CANCELLED
-        ? "Cancelled"
-        : assignedVehicleId && assignedVehicleId !== existingRequest.assignedVehicleId
-          ? "Vehicle assigned"
-          : "Updated";
-  await runOptionalChatNotification(() =>
-    postVehicleRequestStatusChatUpdate({
-      requestId: updatedRequest.id,
-      actorUserId: user.id,
-      actionLabel
-    })
-  );
   await writeAuditLog({
     userId: user.id,
     action: "UPDATE",
@@ -300,13 +271,6 @@ export async function cancelVehicleRequestAction(requestId: string): Promise<voi
   });
 
   await syncVehicleRequestCalendarEntry(updatedRequest.id);
-  await runOptionalChatNotification(() =>
-    postVehicleRequestStatusChatUpdate({
-      requestId: updatedRequest.id,
-      actorUserId: user.id,
-      actionLabel: "Cancelled"
-    })
-  );
   await writeAuditLog({
     userId: user.id,
     action: "CANCEL",

@@ -28,6 +28,7 @@ type Channel = {
   name: string;
   description: string | null;
   channelType: string;
+  photoUrl?: string | null;
   members: Array<{
     userId: string;
     user: UserOption;
@@ -61,7 +62,7 @@ export function CreateChatChannelForm() {
         <CardDescription>Create real internal channels only. No sample channels are generated.</CardDescription>
       </CardHeader>
       <CardContent>
-        <form action={action} className="grid gap-3 md:grid-cols-[1fr_180px_1.5fr_auto]">
+        <form action={action} encType="multipart/form-data" className="grid gap-3 md:grid-cols-[1fr_180px_1.5fr_auto]">
           <Input name="name" placeholder="Channel name" required />
           <Select name="channelType" defaultValue="GENERAL">
             <option value="GENERAL">General</option>
@@ -69,7 +70,8 @@ export function CreateChatChannelForm() {
             <option value="SYSTEM">System</option>
           </Select>
           <Input name="description" placeholder="Optional description" />
-          <Button type="submit" disabled={isPending}>
+          <Input type="file" name="photo" accept="image/*" className="md:col-span-3 text-xs w-auto" />
+          <Button type="submit" disabled={isPending} className="md:col-start-4">
             <PlusCircle className="h-4 w-4" />
             {isPending ? "Creating..." : "Create"}
           </Button>
@@ -87,7 +89,7 @@ function ChannelEditForm({ channel }: { channel: Channel }) {
   const isAdminRequests = channel.channelType === "ADMIN_REQUESTS";
 
   return (
-    <form action={action} className="space-y-3">
+    <form action={action} encType="multipart/form-data" className="space-y-3">
       <input type="hidden" name="channelId" value={channel.id} />
       <div className="grid gap-3 lg:grid-cols-[1fr_180px]">
         <label className="space-y-1">
@@ -104,6 +106,15 @@ function ChannelEditForm({ channel }: { channel: Channel }) {
           </Select>
         </label>
       </div>
+      <label className="space-y-1 block">
+        <span className="text-xs font-medium text-muted-foreground">Profile Picture</span>
+        <div className="flex items-center gap-3">
+          {channel.photoUrl && (
+            <img src={channel.photoUrl.startsWith("/uploads/") ? channel.photoUrl.replace("/uploads/", "/api/file/") : channel.photoUrl} alt="Group Photo" className="w-10 h-10 rounded-md object-cover border" />
+          )}
+          <Input type="file" name="photo" accept="image/*" disabled={isAdminRequests} className="w-full max-w-sm" />
+        </div>
+      </label>
       <label className="space-y-1 block">
         <span className="text-xs font-medium text-muted-foreground">Description</span>
         <Textarea name="description" defaultValue={channel.description ?? ""} className="min-h-20" />

@@ -4,11 +4,10 @@ import path from 'path';
 
 export async function GET(
   request: Request,
-  { params }: { params: Promise<{ path: string[] }> | { path: string[] } }
+  { params }: { params: Promise<{ path: string[] }> }
 ) {
   try {
-    // Await params if it's a promise (Next 15), otherwise use it directly (Next 14)
-    const resolvedParams = await Promise.resolve(params);
+    const resolvedParams = await params;
     
     // Validate path array
     if (!resolvedParams.path || !Array.isArray(resolvedParams.path)) {

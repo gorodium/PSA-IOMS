@@ -27,10 +27,12 @@ export type AuthUser = {
   section: string | null;
   mustChangePassword: boolean;
   isActive: boolean;
+  photoUrl: string | null;
   personnel: {
     id: string;
     fullName: string;
     section: string;
+    photoUrl: string | null;
   } | null;
 };
 
@@ -152,11 +154,13 @@ export const getCurrentUser = cache(async (): Promise<AuthUser | null> => {
       section: true,
       mustChangePassword: true,
       isActive: true,
+      photoUrl: true,
       personnel: {
         select: {
           id: true,
           fullName: true,
-          section: true
+          section: true,
+          photoUrl: true
         }
       }
     }

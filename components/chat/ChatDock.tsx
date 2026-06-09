@@ -4,18 +4,22 @@ import Image from "next/image";
 import Link from "next/link";
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { formatDistanceToNow, format } from "date-fns";
-import { Bell, Expand, FileText, ImageIcon, MessageSquare, Minus, Paperclip, Send, Settings, Smile, Trash2, X, Info, Clock, Hash, ShieldAlert, Car, Building2, ChevronRight, AlertCircle, ChevronDown, Check } from "lucide-react";
+import { Bell, Expand, FileText, ImageIcon, MessageSquare, Minus, Paperclip, Send, Settings, Smile, Trash2, X, Info, Clock, Hash, ShieldAlert, Car, Building2, ChevronRight, AlertCircle, ChevronDown, Check, SquarePen, MessageCircle, Loader2 } from "lucide-react";
 import {
   getChatSnapshotAction,
   markChatChannelReadAction,
   sendChatMessageAction,
   unsendChatMessageAction,
+  searchChatUsersAction,
+  createDirectMessageAction,
   type ChatSnapshot
 } from "@/app/(app)/chat/actions";
 import { ChatMessageItem } from "./ChatMessageItem";
 import { ChatImageLightbox } from "./ChatImageLightbox";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
+import { getInitials, formatChatName } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 
 const emoticons = ["🙂", "😊", "👍", "👏", "🙏", "✅", "📌", "⚠️", "🎉", "😂", "❤️", "💡"];
@@ -167,12 +171,18 @@ function RequestMessageCard({ metadata }: { metadata: RequestCardMetadata }) {
   );
 }
 
+import { useChatGlobal } from "./ChatGlobalProvider";
+
 export function ChatDock({ canManageChat, defaultOpen = false }: ChatDockProps) {
-  const [isOpen, setIsOpen] = useState(defaultOpen);
+  const { isDockOpen: isOpen, setIsDockOpen: setIsOpen, snapshot: globalSnapshot } = useChatGlobal();
   const [snapshot, setSnapshot] = useState<ChatSnapshot | null>(null);
   const [selectedChannelId, setSelectedChannelId] = useState<string | null>(null);
   const [messageBody, setMessageBody] = useState("");
   const [isDragging, setIsDragging] = useState(false);
+  const [isNewMessageOpen, setIsNewMessageOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<Array<{ id: string; name: string; email: string | null }>>([]);
+  const [isSearching, setIsSearching] = useState(false);
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -252,11 +262,45 @@ export function ChatDock({ canManageChat, defaultOpen = false }: ChatDockProps) 
   }, [setSelectedChannel]);
 
   useEffect(() => {
+    // Only set default open state on mount if it's supposed to be open
+    if (defaultOpen) setIsOpen(true);
+  }, [defaultOpen, setIsOpen]);
+
+  useEffect(() => {
     if (!isOpen) return;
     refreshChat();
     const interval = window.setInterval(() => refreshChat(), 15000);
     return () => window.clearInterval(interval);
   }, [isOpen, refreshChat]);
+
+  useEffect(() => {
+    if (searchQuery.length < 2) {
+      setSearchResults([]);
+      return;
+    }
+    const timer = setTimeout(() => {
+      setIsSearching(true);
+      searchChatUsersAction(searchQuery)
+        .then(setSearchResults)
+        .catch(() => undefined)
+        .finally(() => setIsSearching(false));
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  async function handleCreateDm(targetUserId: string) {
+    try {
+      const result = await createDirectMessageAction(targetUserId);
+      if (result.ok && result.channelId) {
+        setIsNewMessageOpen(false);
+        setSearchQuery("");
+        setIsOpen(true);
+        refreshChat(result.channelId);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  }
 
   useEffect(() => {
     if (!isOpen || !selectedChannelId) return;
@@ -314,30 +358,19 @@ export function ChatDock({ canManageChat, defaultOpen = false }: ChatDockProps) 
   }
 
   const totalUnread = snapshot?.totalUnread ?? 0;
+  const isDirectMessage = (c?: { name: string } | null) => {
+    if (!c || !c.name) return false;
+    return c.name.startsWith("DM_") || c.name.startsWith("DM: ");
+  };
+
   const adminChannels = snapshot?.channels.filter(c => c.channelType === "ADMIN_REQUESTS") || [];
   const systemChannels = snapshot?.channels.filter(c => c.channelType === "SYSTEM") || [];
-  const generalChannels = snapshot?.channels.filter(c => c.channelType !== "ADMIN_REQUESTS" && c.channelType !== "SYSTEM") || [];
+  const directMessages = snapshot?.channels.filter(c => isDirectMessage(c)) || [];
+  const generalChannels = snapshot?.channels.filter(c => c.channelType !== "ADMIN_REQUESTS" && c.channelType !== "SYSTEM" && !isDirectMessage(c)) || [];
   const hasCriticalUnread = snapshot?.channels.some(c => c.channelType === "ADMIN_REQUESTS" && c.unreadCount > 0);
 
   if (!isOpen) {
-    return (
-      <button
-        type="button"
-        onClick={() => setIsOpen(true)}
-        className={cn(
-          "fixed bottom-6 right-6 z-40 flex h-14 w-14 items-center justify-center rounded-full text-primary-foreground shadow-xl ring-1 ring-black/10 transition-all hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-          hasCriticalUnread ? "bg-red-600 animate-pulse" : "bg-primary"
-        )}
-        aria-label="Open internal chat"
-      >
-        <MessageSquare className="h-6 w-6" />
-        {totalUnread > 0 && (
-          <span className="absolute -right-1 -top-1 flex h-5 min-w-[20px] items-center justify-center rounded-full border-2 border-background bg-destructive px-1 text-[10px] font-bold text-white shadow-sm">
-            {totalUnread > 99 ? "99+" : totalUnread}
-          </span>
-        )}
-      </button>
-    );
+    return null;
   }
 
   return (
@@ -357,18 +390,23 @@ export function ChatDock({ canManageChat, defaultOpen = false }: ChatDockProps) 
       )}
       <header className="relative flex shrink-0 flex-col border-b bg-muted/20">
         <div className="flex items-center justify-between px-3 py-2.5">
-          <div className="relative flex-1" ref={dropdownRef}>
+          <div className="relative flex-1 min-w-0" ref={dropdownRef}>
             <button
               onClick={() => setShowChannelDropdown(!showChannelDropdown)}
-              className="flex w-full items-center justify-between rounded-md border bg-background px-3 py-1.5 text-sm shadow-sm transition-colors hover:bg-muted/50 focus:outline-none"
+              className="flex w-full items-center justify-between rounded-md border bg-background px-3 py-1.5 text-sm shadow-sm transition-colors hover:bg-muted/50 focus:outline-none min-w-0"
             >
-              <div className="flex items-center gap-2 truncate">
-                {selectedChannel?.channelType === "ADMIN_REQUESTS" ? <ShieldAlert className="h-4 w-4 text-amber-500" /> : 
-                 selectedChannel?.channelType === "SYSTEM" ? <Bell className="h-4 w-4 text-blue-500" /> : 
-                 <Hash className="h-4 w-4 text-muted-foreground" />}
-                <span className="font-semibold truncate">{selectedChannel?.name ?? "Select Channel"}</span>
+              <div className="flex items-center gap-2 min-w-0 flex-1 mr-2">
+                {selectedChannel?.channelType === "ADMIN_REQUESTS" ? <ShieldAlert className="h-4 w-4 text-amber-500 shrink-0" /> : 
+                 selectedChannel?.channelType === "SYSTEM" ? <Bell className="h-4 w-4 text-blue-500 shrink-0" /> : 
+                 isDirectMessage(selectedChannel) ? <MessageSquare className="h-4 w-4 text-primary shrink-0" /> :
+                 <Hash className="h-4 w-4 text-muted-foreground shrink-0" />}
+                <span className="font-semibold truncate">
+                  {selectedChannel && isDirectMessage(selectedChannel)
+                    ? formatChatName(selectedChannel.name)
+                    : selectedChannel?.name ?? "Select Channel"}
+                </span>
               </div>
-              <ChevronDown className={cn("h-4 w-4 text-muted-foreground transition-transform duration-200", showChannelDropdown && "rotate-180")} />
+              <ChevronDown className={cn("h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200", showChannelDropdown && "rotate-180")} />
             </button>
 
             {/* Custom Channel Dropdown */}
@@ -406,6 +444,20 @@ export function ChatDock({ canManageChat, defaultOpen = false }: ChatDockProps) 
                         <button key={channel.id} onClick={() => { setSelectedChannel(channel.id); refreshChat(channel.id); }} className={cn("relative flex w-full cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground", selectedChannelId === channel.id && "bg-accent text-accent-foreground")}>
                           <Hash className="mr-2 h-3.5 w-3.5 text-muted-foreground" />
                           <span className="flex-1 text-left truncate">{channel.name}</span>
+                          {channel.unreadCount > 0 && <span className="ml-auto rounded-full bg-primary px-1.5 py-0.5 text-[9px] font-bold text-primary-foreground">{channel.unreadCount}</span>}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {directMessages.length > 0 && (
+                    <div className="mb-1">
+                      <div className="px-2 py-1.5 text-[10px] font-semibold uppercase text-muted-foreground">Direct Messages</div>
+                      {directMessages.map(channel => (
+                        <button key={channel.id} onClick={() => { setSelectedChannel(channel.id); refreshChat(channel.id); }} className={cn("relative flex w-full cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground", selectedChannelId === channel.id && "bg-accent text-accent-foreground")}>
+                          <MessageSquare className="mr-2 h-3.5 w-3.5 text-muted-foreground" />
+                          <span className="flex-1 text-left truncate">
+                            {formatChatName(channel.name)}
+                          </span>
                           {channel.unreadCount > 0 && <span className="ml-auto rounded-full bg-primary px-1.5 py-0.5 text-[9px] font-bold text-primary-foreground">{channel.unreadCount}</span>}
                         </button>
                       ))}

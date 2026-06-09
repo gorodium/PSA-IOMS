@@ -16,7 +16,7 @@ const settingsCards = [
   },
   {
     title: "Chat Channels",
-    description: "Create channels and manage channel access for internal chat.",
+    description: "Create channels and manage channel access for chat.",
     href: "/settings/chat",
     icon: MessageSquare,
     resource: "settings" as const,

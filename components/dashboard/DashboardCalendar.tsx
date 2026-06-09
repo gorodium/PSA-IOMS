@@ -199,26 +199,26 @@ export function DashboardCalendar() {
         </DialogContent>
       </Dialog>
 
-      <div className="w-full flex flex-col mt-6 flex-1 min-h-0">
+      <div className="w-full flex flex-col mt-6 min-h-0">
         <h3 className="font-medium text-sm text-muted-foreground uppercase tracking-wider mb-4 shrink-0">Upcoming</h3>
         
         {upcomingActivities.length > 0 ? (
-          <div className="flex-1 overflow-y-auto space-y-2 pr-1 scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-slate-800">
+          <div className="overflow-y-auto space-y-2 pr-1 scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-slate-800 max-h-[460px]">
             {upcomingActivities.map(a => {
               const typeName = a.type === "EVENT" ? "Work Event" : a.type === "TRAVEL" ? "Travel Schedule" : a.type === "HOLIDAY" ? "Holiday" : a.type === "ROOM" ? "Room Reservation" : "Vehicle Usage";
               return (
                 <div 
                   key={a.id} 
                   onClick={() => setSelectedActivity(a)}
-                  className={`p-3 border dark:border-white/10 rounded-lg bg-white dark:bg-[#1C212E] shadow-sm border-l-4 cursor-pointer hover:shadow-md hover:bg-slate-50 dark:hover:bg-white/5 transition-all ${getBorderClassForActivity(a.type)}`}
+                  className={`py-2 px-3 border dark:border-white/10 rounded-lg bg-white dark:bg-[#1C212E] shadow-sm border-l-4 cursor-pointer hover:shadow-md hover:bg-slate-50 dark:hover:bg-white/5 transition-all ${getBorderClassForActivity(a.type)}`}
                 >
-                  <div className="flex justify-between items-start gap-2 mb-1">
+                  <div className="flex justify-between items-start gap-2 mb-0.5">
                     <div className="font-bold text-sm text-foreground tracking-tight line-clamp-1">{a.title}</div>
                     <div className="text-[10px] text-muted-foreground font-medium shrink-0 bg-muted/50 px-1.5 py-0.5 rounded-sm">
                       {format(new Date(a.startDate), "MMM d")}
                     </div>
                   </div>
-                  <div className="text-xs text-muted-foreground line-clamp-1 mb-2">{a.description}</div>
+                  <div className="text-xs text-muted-foreground line-clamp-1 mb-1">{a.description}</div>
                   <div className={`text-[10px] font-bold uppercase tracking-widest ${getColorClassForActivity(a.type)}`}>
                     {typeName}
                   </div>

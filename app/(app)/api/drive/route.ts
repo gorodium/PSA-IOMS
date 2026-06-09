@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { db } from "@/lib/db";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -17,9 +18,7 @@ export async function GET(request: Request) {
   // If the ref looks like an SO number (e.g. 2026-196) rather than a Reference No (e.g. 26PSO43-TO-196),
   // look it up in the database to get the actual Reference No for the Google Drive search.
   try {
-    const { PrismaClient } = require("@prisma/client");
-    const prisma = new PrismaClient();
-    const so = await prisma.specialOrder.findFirst({
+    const so = await db.specialOrder.findFirst({
       where: {
         OR: [
           { soNumber: ref },

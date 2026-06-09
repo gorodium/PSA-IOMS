@@ -4,7 +4,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { formatDistanceToNow, format } from "date-fns";
-import { Bell, FileText, ImageIcon, Paperclip, Search, Send, Smile, Trash2, X, Info, Clock, Hash, ShieldAlert, Car, Building2, ChevronRight, AlertCircle } from "lucide-react";
+import { Bell, FileText, ImageIcon, Paperclip, Search, Send, Smile, Trash2, X, Info, Clock, Hash, ShieldAlert, Car, Building2, ChevronRight, AlertCircle, MessageSquare } from "lucide-react";
+import { formatChatName } from "@/lib/utils";
 import {
   getChatSnapshotAction,
   markChatChannelReadAction,
@@ -281,9 +282,15 @@ export function FullPageChat() {
     }, 100);
   }
 
+  const isDirectMessage = (c?: { name: string } | null) => {
+    if (!c || !c.name) return false;
+    return c.name.startsWith("DM_") || c.name.startsWith("DM: ");
+  };
+
   const adminChannels = snapshot?.channels.filter(c => c.channelType === "ADMIN_REQUESTS") || [];
   const systemChannels = snapshot?.channels.filter(c => c.channelType === "SYSTEM") || [];
-  const generalChannels = snapshot?.channels.filter(c => c.channelType !== "ADMIN_REQUESTS" && c.channelType !== "SYSTEM") || [];
+  const directMessages = snapshot?.channels.filter(c => isDirectMessage(c)) || [];
+  const generalChannels = snapshot?.channels.filter(c => c.channelType !== "ADMIN_REQUESTS" && c.channelType !== "SYSTEM" && !isDirectMessage(c)) || [];
 
   return (
     <div className="flex h-[calc(100vh-8rem)] min-h-[620px] overflow-hidden rounded-xl border bg-background shadow-sm">
@@ -291,7 +298,7 @@ export function FullPageChat() {
       <aside className="hidden lg:flex w-[260px] shrink-0 flex-col border-r bg-muted/10">
         <div className="border-b px-4 py-4 h-16 flex items-center shrink-0 bg-muted/20">
           <div>
-            <h2 className="text-[15px] font-semibold tracking-tight text-foreground">Workspace Chat</h2>
+            <h2 className="text-[15px] font-semibold tracking-tight text-foreground">IOMS Connect</h2>
             <p className="text-xs text-muted-foreground font-medium">Internal Operations</p>
           </div>
         </div>
@@ -354,6 +361,25 @@ export function FullPageChat() {
                   </div>
                 </div>
               )}
+
+              {directMessages.length > 0 && (
+                <div className="pt-2">
+                  <h3 className="mb-1.5 px-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                    Direct Messages
+                  </h3>
+                  <div className="space-y-0.5">
+                    {directMessages.map(channel => (
+                      <ChannelItem 
+                        key={channel.id} 
+                        channel={{...channel, name: formatChatName(channel.name)}} 
+                        isActive={selectedChannelId === channel.id} 
+                        icon={<MessageSquare className="h-4 w-4" />}
+                        onClick={() => { setSelectedChannelId(channel.id); selectedChannelRef.current = channel.id; refreshChat(channel.id, searchQuery); }} 
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -380,8 +406,9 @@ export function FullPageChat() {
               <h1 className="truncate text-base lg:text-lg font-semibold text-foreground flex items-center gap-2">
                 {selectedChannel?.channelType === "ADMIN_REQUESTS" ? <ShieldAlert className="h-5 w-5 text-amber-500" /> : 
                  selectedChannel?.channelType === "SYSTEM" ? <Bell className="h-5 w-5 text-blue-500" /> : 
+                 isDirectMessage(selectedChannel) ? <MessageSquare className="h-5 w-5 text-primary" /> :
                  <Hash className="h-5 w-5 text-muted-foreground" />}
-                {selectedChannel?.name ?? "No channel selected"}
+                {selectedChannel ? formatChatName(selectedChannel.name) : "No channel selected"}
               </h1>
             </div>
             {selectedChannel?.description && (
