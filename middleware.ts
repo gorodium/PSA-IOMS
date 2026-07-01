@@ -5,7 +5,7 @@ const sessionCookieName = "ioms_session";
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const hasSession = Boolean(request.cookies.get(sessionCookieName)?.value);
-  const protectedPaths = ["/projects/new", "/admin", "/settings", "/vehicle-requests", "/room-reservations", "/convocation/admin"];
+  const protectedPaths = ["/projects/new", "/admin", "/settings", "/vehicle-requests", "/room-reservations", "/convocation/admin", "/reports/administrative"];
   const isProtectedProjectEdit = /^\/projects\/[^/]+\/edit$/.test(pathname);
   const isProtected = protectedPaths.some((path) => pathname === path || pathname.startsWith(`${path}/`)) || isProtectedProjectEdit;
 

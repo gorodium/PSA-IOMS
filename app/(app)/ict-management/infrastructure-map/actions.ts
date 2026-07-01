@@ -3,7 +3,7 @@
 import { mkdir, writeFile } from "fs/promises";
 import path from "path";
 import { revalidatePath } from "next/cache";
-import { requireUser } from "@/lib/auth";
+import { requireUser, getCurrentUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import type {
   MapFurnitureType,
@@ -133,8 +133,8 @@ export type ICTMapPageData = {
 // ── Read ──────────────────────────────────────────────────────────────────────
 
 export async function getICTMapPageDataAction(mapId?: string): Promise<ICTMapPageData> {
-  const user = await requireUser();
-  const admin = isICTMapAdmin(user.role);
+  const user = await getCurrentUser();
+  const admin = user ? isICTMapAdmin(user.role) : false;
 
   const maps = await db.networkMap.findMany({
     orderBy: { createdAt: "desc" },
@@ -232,7 +232,7 @@ export async function getICTMapPageDataAction(mapId?: string): Promise<ICTMapPag
 }
 
 export async function getPersonnelForICTMapAction() {
-  await requireUser();
+  await getCurrentUser();
   return db.personnel.findMany({
     where: { isActive: true },
     select: { id: true, fullName: true, position: true, section: true, photoUrl: true },

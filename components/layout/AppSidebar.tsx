@@ -26,7 +26,7 @@ type NavItem = {
   href: string;
   icon: React.ElementType;
   basePath?: string;
-  resource?: "vehicleRequest" | "roomReservation" | "settings";
+  resource?: "vehicleRequest" | "roomReservation" | "settings" | "adminReports";
 };
 
 type NavGroup = {
@@ -67,7 +67,7 @@ export const navigationGroups: NavGroup[] = [
   {
     label: "Reports",
     items: [
-      { name: "Administrative Reports", href: "/reports/administrative", icon: FileText },
+      { name: "Administrative Reports", href: "/reports/administrative", icon: FileText, resource: "adminReports" },
       { name: "Special Orders", href: "/reports/special-order", icon: ClipboardList }
     ]
   },

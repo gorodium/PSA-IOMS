@@ -14,7 +14,8 @@ export type PermissionResource =
   | "user"
   | "vehicleRequest"
   | "roomReservation"
-  | "convocation";
+  | "convocation"
+  | "adminReports";
 
 export type PermissionUser = {
   role: UserRole;
@@ -66,12 +67,25 @@ const permissions: Record<Exclude<UserRole, "SUPER_ADMIN">, Partial<Record<Permi
   }
 };
 
+const publicPermissions: Partial<Record<PermissionResource, PermissionAction[]>> = {
+  dashboard: ["view"],
+  project: ["view"],
+  personnel: ["view"],
+  task: ["view"],
+  remark: ["view"],
+  convocation: ["view"]
+};
+
 export function checkUserPermission(
   user: PermissionUser | null | undefined,
   action: PermissionAction,
   resource: PermissionResource
 ) {
   if (!user || user.isActive === false) {
+    if (!user) {
+      const allowedActions = publicPermissions[resource] ?? [];
+      return allowedActions.includes(action);
+    }
     return false;
   }
 
