@@ -10,10 +10,7 @@ export const metadata = {
 
 export default async function SpecialOrderPage() {
   const user = await getCurrentUser();
-  
-  if (!user) {
-    redirect("/login");
-  }
+  const canSync = user?.role === "SUPER_ADMIN" || user?.role === "ADMIN";
 
   const specialOrders = await prisma.specialOrder.findMany({
     orderBy: { createdAt: "desc" },
@@ -23,8 +20,8 @@ export default async function SpecialOrderPage() {
   });
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 space-y-6 max-w-7xl mx-auto">
-      <SpecialOrderClient initialData={specialOrders} />
+    <div className="container max-w-7xl mx-auto py-6 space-y-6">
+      <SpecialOrderClient initialData={specialOrders as any} canSync={canSync} />
     </div>
   );
 }

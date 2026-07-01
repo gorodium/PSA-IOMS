@@ -29,9 +29,10 @@ export interface SpecialOrderRecord {
 
 interface Props {
   initialData: SpecialOrderRecord[];
+  canSync?: boolean;
 }
 
-export function SpecialOrderClient({ initialData }: Props) {
+export function SpecialOrderClient({ initialData, canSync = false }: Props) {
   const [isFetching, setIsFetching] = useState(false);
   const [isCommitting, setIsCommitting] = useState(false);
   const [previewResult, setPreviewResult] = useState<SyncResult | null>(null);
@@ -150,10 +151,12 @@ export function SpecialOrderClient({ initialData }: Props) {
             View and sync Special Orders from the central Google Sheet.
           </p>
         </div>
-        <Button onClick={handleFetchPreview} disabled={isFetching || isCommitting} className="w-full sm:w-auto">
-          {isFetching ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <DownloadCloud className="w-4 h-4 mr-2" />}
-          Sync from Sheet
-        </Button>
+        {canSync && (
+          <Button onClick={handleFetchPreview} disabled={isFetching || isCommitting} className="w-full sm:w-auto">
+            {isFetching ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <DownloadCloud className="w-4 h-4 mr-2" />}
+            Sync from Sheet
+          </Button>
+        )}
       </div>
 
       {error && (
