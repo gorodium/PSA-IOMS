@@ -11,7 +11,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { replaceMessageSpeakerAction } from "@/app/(app)/convocation/actions";
+import { overrideConvocationItemPersonnelAction } from "@/app/(app)/convocation/actions";
 
 type Personnel = {
   id: string;
@@ -34,7 +34,7 @@ export function ReplaceMessageSpeakerButton({
     if (!selectedPersonnelId) return;
     startTransition(async () => {
       try {
-        await replaceMessageSpeakerAction(itemId, selectedPersonnelId);
+        await overrideConvocationItemPersonnelAction(itemId, selectedPersonnelId);
         setOpen(false);
       } catch (error) {
         alert(error instanceof Error ? error.message : "Failed to replace speaker.");

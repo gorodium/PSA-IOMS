@@ -933,7 +933,7 @@ export async function updateProjectMonthlyDetails(payload: ProjectDetailsUpdateP
         description: payload.description !== undefined ? payload.description : undefined,
         showDescription: payload.showDescription !== undefined ? payload.showDescription : undefined,
         totalSamplesDocumentsLabel: payload.totalSamplesDocumentsLabel !== undefined ? payload.totalSamplesDocumentsLabel : undefined,
-        customTaskColumns: payload.customTaskColumns !== undefined ? (payload.customTaskColumns as any) : undefined,
+        customTaskColumns: payload.customTaskColumns !== undefined ? (payload.customTaskColumns as { id: string; name: string; type: "text" | "number" }[]) : undefined,
       }
     });
 

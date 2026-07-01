@@ -876,7 +876,7 @@ export function PeriodProjectDetails({ project, canEdit, allPersonnel }: { proje
                                     key={col.id} 
                                     type={disabledCols[col.id] ? "text" : col.type} 
                                     placeholder={disabledCols[col.id] ? "" : col.name} 
-                                    value={disabledCols[col.id] ? "" : (((task.customValues as CustomValues || {})[col.id]) ?? "")} 
+                                    value={disabledCols[col.id] ? "" : (String((task.customValues as Record<string, unknown> || {})[col.id] ?? ""))}
                                     onChange={e => updateTaskCustomValue(cycle.id, task.id, col.id, e.target.value)} 
                                     disabled={disabledCols[col.id]} 
                                     className="h-8 text-center" 
@@ -930,7 +930,7 @@ export function PeriodProjectDetails({ project, canEdit, allPersonnel }: { proje
                                 {showRate && <div className="text-slate-600 dark:text-slate-400 text-center w-full pt-1" style={{ textAlign: "center" }}>{disabledCols.rate ? "" : (task.responseRate !== null && task.responseRate !== undefined ? `${task.responseRate}%` : "-")}</div>}
                                 {customColumns.map(col => (
                                   <div key={col.id} className="text-slate-600 dark:text-slate-400 text-center w-full pt-1" style={{ textAlign: "center" }}>
-                                    {disabledCols[col.id] ? "" : (((task.customValues as CustomValues || {})[col.id]) ?? "-")}
+                                    {disabledCols[col.id] ? "" : (String((task.customValues as Record<string, unknown> || {})[col.id] ?? "-"))}
                                   </div>
                                 ))}
                                 <div className="text-center w-full pt-1" style={{ textAlign: "center" }}>

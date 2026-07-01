@@ -42,7 +42,7 @@ export function CustomTextOverrideDialog({ itemId }: { itemId: string }) {
         <DialogHeader>
           <DialogTitle>Set Custom Text</DialogTitle>
           <DialogDescription>
-            Enter a custom value for this program assignment (e.g. "To be played via AV", "Guest Speaker").
+            Enter a custom value for this program assignment (e.g. &quot;To be played via AV&quot;, &quot;Guest Speaker&quot;).
           </DialogDescription>
         </DialogHeader>
         <div className="py-4">

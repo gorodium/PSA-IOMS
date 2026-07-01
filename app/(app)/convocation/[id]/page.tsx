@@ -197,7 +197,7 @@ export default async function ConvocationDetailPage({ params }: ConvocationDetai
                       <TableCell>
                         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                           <AssignmentDisplay value={assignment} itemKey={item.itemKey} />
-                          {isAdmin && program.status !== ConvocationProgramStatus.COMPLETED && (
+                          {isAdmin && program.status !== ConvocationProgramStatus.FINALIZED && (
                             <div className="mt-2 flex flex-wrap items-center gap-1 sm:mt-0 sm:justify-end">
                               {item.assignedPersonnelId &&
                                 item.rotationKey &&

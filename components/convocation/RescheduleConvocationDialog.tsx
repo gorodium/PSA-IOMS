@@ -26,7 +26,6 @@ import { rescheduleConvocationProgramAction } from "@/app/(app)/convocation/acti
 
 export function RescheduleConvocationDialog({
   programId,
-  currentDate,
 }: {
   programId: string;
   currentDate: Date;
@@ -48,8 +47,8 @@ export function RescheduleConvocationDialog({
       
       await rescheduleConvocationProgramAction(programId, formData);
       setOpen(false);
-    } catch (err: any) {
-      setErrorMsg(err.message || "Failed to reschedule program.");
+    } catch (err) {
+      setErrorMsg(err instanceof Error ? err.message : "Failed to reschedule program.");
     } finally {
       setIsPending(false);
     }
