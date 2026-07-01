@@ -8,7 +8,7 @@ import {
   ChatChannelType,
   ChatMessageType
 } from "@prisma/client";
-import { requireUser } from "@/lib/auth";
+import { requireUser, getCurrentUser } from "@/lib/auth";
 import {
   accessibleChatChannelWhere,
   assertCanAccessChatChannel,
@@ -179,7 +179,20 @@ async function saveChannelPhotoFile(file: File | null) {
 }
 
 export async function getChatSnapshotAction(selectedChannelId?: string | null, searchQuery?: string | null): Promise<ChatSnapshot> {
-  const user = await requireUser();
+  const user = await getCurrentUser();
+  
+  if (!user) {
+    return {
+      channels: [],
+      selectedChannelId: null,
+      totalUnread: 0,
+      messages: [],
+      customEmojis: [],
+      currentUserId: "",
+      currentUserRole: "VIEWER"
+    };
+  }
+
   const search = searchQuery?.trim();
 
   if (isAdminRequestRole(user.role)) {
