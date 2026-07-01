@@ -322,6 +322,19 @@ export async function createOverlayPdf(input: {
         currentY = nameY - lineHeight;
       }
 
+      // Draw a white background to hide any default printed text (like "AVP") on the template
+      if (["bagongPilipinas", "prayer", "zumba", "nationalAnthem"].includes(field.key)) {
+        const textWidth = font.widthOfTextAtSize(line, currentFontSize);
+        const padding = 4;
+        page.drawRectangle({
+          x: currentX - padding,
+          y: currentY - (currentFontSize * 0.25) - padding,
+          width: textWidth + (padding * 2),
+          height: currentFontSize + (padding * 2),
+          color: rgb(1, 1, 1),
+        });
+      }
+
       page.drawText(line, {
         x: currentX,
         y: currentY,

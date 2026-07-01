@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React from 'react';
 import {
@@ -11,6 +11,8 @@ import {
   Server,
   HardDrive,
   Cpu,
+  User,
+  Trash2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -28,6 +30,7 @@ interface DeviceDrawerProps {
   isAdmin:     boolean;
   onClose:     () => void;
   onEdit:      (device: ICTMapDevice) => void;
+  onDelete:    (id: string) => void;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -95,6 +98,7 @@ export function DeviceDrawer({
   isAdmin,
   onClose,
   onEdit,
+  onDelete,
 }: DeviceDrawerProps) {
   const isOpen = Boolean(device);
 
@@ -264,15 +268,27 @@ export function DeviceDrawer({
               )}
             </div>
 
-            {/* Footer */}
+            {/* Admin Actions */}
             {isAdmin && (
-              <div className="border-t border-slate-100 px-4 py-3">
+              <div className="border-t border-slate-100 px-4 py-3 flex gap-2">
                 <Button
-                  className="w-full gap-2 bg-blue-600 text-white hover:bg-blue-700"
+                  className="flex-1 gap-2 bg-blue-600 text-white hover:bg-blue-700"
                   onClick={() => onEdit(device)}
                 >
                   <Pencil className="h-3.5 w-3.5" />
                   Edit Device
+                </Button>
+                <Button
+                  variant="destructive"
+                  className="flex-none"
+                  onClick={() => {
+                    if (confirm("Are you sure you want to delete this device?")) {
+                      onDelete(device.id);
+                    }
+                  }}
+                  title="Delete Device"
+                >
+                  <Trash2 className="h-4 w-4" />
                 </Button>
               </div>
             )}

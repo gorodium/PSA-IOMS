@@ -35,7 +35,6 @@ type PersonnelFormRecord = {
   travelDetails?: string | null;
   travelDestination?: string | null;
   travelStartDate?: Date | null;
-  travelStartDate?: Date | null;
   travelEndDate?: Date | null;
   photoUrl?: string | null;
 };

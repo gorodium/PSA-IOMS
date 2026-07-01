@@ -15,8 +15,20 @@ import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
+export interface SpecialOrderRecord {
+  id: string;
+  soNumber?: string | null;
+  referenceNo?: string | null;
+  purpose?: string | null;
+  destination?: string | null;
+  activityDateString?: string | null;
+  activityDate?: Date | string | null;
+  people?: { id: string; originalName: string; personnel?: { fullName?: string | null } }[] | null;
+  [key: string]: unknown;
+}
+
 interface Props {
-  initialData: Record<string, unknown>[];
+  initialData: SpecialOrderRecord[];
 }
 
 export function SpecialOrderClient({ initialData }: Props) {
@@ -24,7 +36,7 @@ export function SpecialOrderClient({ initialData }: Props) {
   const [isCommitting, setIsCommitting] = useState(false);
   const [previewResult, setPreviewResult] = useState<SyncResult | null>(null);
   const [showPreview, setShowPreview] = useState(false);
-  const [personnelModalSO, setPersonnelModalSO] = useState<Record<string, unknown> | null>(null);
+  const [personnelModalSO, setPersonnelModalSO] = useState<SpecialOrderRecord | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   type SortField = 'soNumber' | 'referenceNo' | 'purpose' | 'destination' | 'activityDate' | 'personnel';
@@ -50,7 +62,7 @@ export function SpecialOrderClient({ initialData }: Props) {
         if (so.activityDateString) {
            matchesMonth = String(so.activityDateString).toLowerCase().includes(monthFilter.toLowerCase());
         } else if (so.activityDate) {
-           matchesMonth = format(new Date(so.activityDate), "MMMM").toLowerCase().includes(monthFilter.toLowerCase());
+           matchesMonth = format(new Date(so.activityDate as string | number | Date), "MMMM").toLowerCase().includes(monthFilter.toLowerCase());
         } else {
            matchesMonth = false;
         }
@@ -78,8 +90,8 @@ export function SpecialOrderClient({ initialData }: Props) {
     let valB = b[sortField];
     
     if (sortField === 'personnel') {
-      valA = a.people?.length || 0;
-      valB = b.people?.length || 0;
+      valA = (a.people as unknown[])?.length || 0;
+      valB = (b.people as unknown[])?.length || 0;
     }
     
     if (valA === valB) return 0;
@@ -213,18 +225,18 @@ export function SpecialOrderClient({ initialData }: Props) {
                         </a>
                       ) : "-"}
                     </td>
-                    <td className="px-4 py-3 max-w-[200px] truncate" title={so.purpose}>{so.purpose}</td>
+                    <td className="px-4 py-3 max-w-[200px] truncate" title={so.purpose || undefined}>{so.purpose}</td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-1.5 text-xs">
                         <MapPin className="w-3.5 h-3.5 text-slate-400" />
-                        <span className="truncate max-w-[150px]" title={so.destination}>{so.destination || "-"}</span>
+                        <span className="truncate max-w-[150px]" title={so.destination || undefined}>{so.destination || "-"}</span>
                       </div>
                     </td>
                     <td className="px-4 py-3">
                       {so.activityDateString || so.activityDate ? (
                         <div className="flex items-center gap-1.5 text-xs">
                           <CalendarIcon className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
-                          <span className="truncate max-w-[200px]" title={so.activityDateString || (so.activityDate ? format(new Date(so.activityDate), "MMM d, yyyy") : "")}>
+                          <span className="truncate max-w-[200px]" title={so.activityDateString || (so.activityDate ? format(new Date(so.activityDate), "MMM d, yyyy") : undefined)}>
                             {so.activityDateString || (so.activityDate ? format(new Date(so.activityDate), "MMM d, yyyy") : "")}
                           </span>
                         </div>

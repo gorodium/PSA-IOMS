@@ -52,6 +52,10 @@ export function ImageCropper({ imageSrc, onCropComplete, onCancel }: ImageCroppe
         throw new Error("No 2d context");
       }
 
+      if (!croppedAreaPixels) {
+        throw new Error("No crop area");
+      }
+
       // We want a square output, max 500x500 to keep it small
       const size = Math.min(500, croppedAreaPixels.width, croppedAreaPixels.height);
       canvas.width = size;

@@ -352,7 +352,7 @@ export function ICTInfrastructureMapPage({ initialData, personnel }: Props) {
               {isAdmin && (
                 <Button onClick={() => setIsCreateMapOpen(true)}>
                   <Plus className="h-4 w-4" />
-                  Create First Map
+                  Upload Background of Map
                 </Button>
               )}
             </div>
@@ -441,6 +441,12 @@ export function ICTInfrastructureMapPage({ initialData, personnel }: Props) {
                   isAdmin={isAdmin}
                   onClose={() => setSelectedDeviceId(null)}
                   onEdit={(d) => { setEditingDevice(d); setIsDeviceFormOpen(true); }}
+                  onDelete={async (id) => {
+                    await deleteNetworkDeviceAction(id);
+                    showToast("Device deleted.");
+                    setSelectedDeviceId(null);
+                    refreshData();
+                  }}
                 />
                 <FurnitureDrawer
                   furniture={selectedFurnitureItem}
@@ -449,6 +455,12 @@ export function ICTInfrastructureMapPage({ initialData, personnel }: Props) {
                   isAdmin={isAdmin}
                   onClose={() => setSelectedFurnitureId(null)}
                   onEdit={(f) => { setEditingFurniture(f); setIsFurnitureFormOpen(true); }}
+                  onDelete={async (id) => {
+                    await deleteFurnitureAction(id);
+                    showToast("Furniture deleted.");
+                    setSelectedFurnitureId(null);
+                    refreshData();
+                  }}
                 />
                 <EmployeeSeatDrawer
                   seat={selectedSeatItem}
@@ -457,6 +469,12 @@ export function ICTInfrastructureMapPage({ initialData, personnel }: Props) {
                   isAdmin={isAdmin}
                   onClose={() => setSelectedSeatId(null)}
                   onEdit={() => {}}
+                  onDelete={async (id) => {
+                    await deleteEmployeeSeatAction(id);
+                    showToast("Seat deleted.");
+                    setSelectedSeatId(null);
+                    refreshData();
+                  }}
                 />
               </div>
             </div>
@@ -698,7 +716,7 @@ export function ICTInfrastructureMapPage({ initialData, personnel }: Props) {
         <DialogContent>
           <DialogHeader><DialogTitle>Upload Map Background</DialogTitle></DialogHeader>
           <div className="space-y-4">
-            <p className="text-sm text-muted-foreground">Upload your SketchUp office layout image (PNG or JPG, max 10 MB).</p>
+            <p className="text-sm text-muted-foreground">Upload your SketchUp office layout image (PNG or JPG, max 50 MB).</p>
             <Input type="file" accept="image/*" onChange={(e) => setUploadFile(e.target.files?.[0] ?? null)} />
           </div>
           <DialogFooter>

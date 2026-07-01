@@ -1,0 +1,16 @@
+[
+  {
+    "AllowMultiple": false,
+    "EndLine": 894,
+    "ReplacementContent": "  showResponseRate?: boolean;\n  totalSamplesDocumentsLabel?: string;\n  customTaskColumns?: unknown;\n  cycles: {",
+    "StartLine": 892,
+    "TargetContent": "  showResponseRate?: boolean;\n  totalSamplesDocumentsLabel?: string;\n  cycles: {"
+  },
+  {
+    "AllowMultiple": false,
+    "EndLine": 950,
+    "ReplacementContent": "        showTotalSamplesDocuments: payload.showTotalSamplesDocuments !== undefined ? payload.showTotalSamplesDocuments : undefined,\n        showResponseRate: payload.showResponseRate !== undefined ? payload.showResponseRate : undefined,\n        totalSamplesDocumentsLabel: payload.totalSamplesDocumentsLabel !== undefined ? payload.totalSamplesDocumentsLabel : undefined,\n        customTaskColumns: payload.customTaskColumns !== undefined ? (payload.customTaskColumns as any) : undefined,\n      }\n    });",
+    "StartLine": 947,
+    "TargetContent": "        showTotalSamplesDocuments: payload.showTotalSamplesDocuments !== undefined ? payload.showTotalSamplesDocuments : undefined,\n        showResponseRate: payload.showResponseRate !== undefined ? payload.showResponseRate : undefined,\n        totalSamplesDocumentsLabel: payload.totalSamplesDocumentsLabel !== undefined ? payload.totalSamplesDocumentsLabel : undefined,\n      }\n    });"
+  }
+]

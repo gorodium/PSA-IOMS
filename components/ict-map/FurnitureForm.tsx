@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect, useTransition } from "react";
 import {
@@ -11,13 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import {
@@ -38,6 +32,12 @@ const FURNITURE_TYPES: ICTMapFurniture["type"][] = [
   "PRINTER_TABLE",
   "NETWORK_RACK",
   "SHELF",
+  "CHAIR",
+  "SERVER_RACK",
+  "PRINTER_STATION",
+  "RECEPTION",
+  "WALL",
+  "PARTITION",
   "OTHER",
 ];
 
@@ -51,6 +51,12 @@ const FURNITURE_TYPE_LABELS: Record<ICTMapFurniture["type"], string> = {
   PRINTER_TABLE: "Printer Table",
   NETWORK_RACK: "Network Rack",
   SHELF: "Shelf",
+  CHAIR: "Chair",
+  SERVER_RACK: "Server Rack",
+  PRINTER_STATION: "Printer Station",
+  RECEPTION: "Reception",
+  WALL: "Wall",
+  PARTITION: "Partition",
   OTHER: "Other",
 };
 
@@ -251,20 +257,16 @@ export default function FurnitureForm({
           {/* Type */}
           <Field label="Type" required>
             <Select
+              id="furnitureType"
               value={form.type}
-              onValueChange={(v) => set("type", v as ICTMapFurniture["type"])}
+              onChange={(e) => set("type", e.target.value as ICTMapFurniture["type"])}
               disabled={isPending}
             >
-              <SelectTrigger id="furnitureType">
-                <SelectValue placeholder="Select type" />
-              </SelectTrigger>
-              <SelectContent>
-                {FURNITURE_TYPES.map((t) => (
-                  <SelectItem key={t} value={t}>
-                    {FURNITURE_TYPE_LABELS[t]}
-                  </SelectItem>
-                ))}
-              </SelectContent>
+              {FURNITURE_TYPES.map((t) => (
+                <option key={t} value={t}>
+                  {FURNITURE_TYPE_LABELS[t]}
+                </option>
+              ))}
             </Select>
           </Field>
 

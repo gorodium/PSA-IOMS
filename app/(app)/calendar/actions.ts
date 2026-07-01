@@ -70,6 +70,7 @@ export async function getCalendarActivitiesAction(date: Date, view: "day" | "wee
     .map((h) => ({
       id: `holiday-${h.date}`,
       type: ActivityType.HOLIDAY,
+      additionalTypes: [],
       title: h.name,
       description: h.type === "public" ? "Regular Holiday" : "Special Non-Working Holiday",
       startDate: new Date(h.date),

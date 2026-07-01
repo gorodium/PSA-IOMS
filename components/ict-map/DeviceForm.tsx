@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect, useTransition } from "react";
 import {
@@ -11,13 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import {
@@ -44,6 +38,8 @@ const DEVICE_TYPES: ICTMapDevice["type"][] = [
   "CCTV",
   "NVR",
   "UPS",
+  "ROUTER",
+  "IP_PHONE",
   "OTHER",
 ];
 
@@ -66,6 +62,8 @@ const DEVICE_TYPE_LABELS: Record<ICTMapDevice["type"], string> = {
   CCTV: "CCTV",
   NVR: "NVR",
   UPS: "UPS",
+  ROUTER: "Router",
+  IP_PHONE: "IP Phone",
   OTHER: "Other",
 };
 
@@ -290,45 +288,32 @@ export default function DeviceForm({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Field label="Type" required>
               <Select
+                id="deviceType"
                 value={form.type}
-                onValueChange={(v) => set("type", v as ICTMapDevice["type"])}
+                onChange={(e) => set("type", e.target.value as ICTMapDevice["type"])}
                 disabled={isPending}
               >
-                <SelectTrigger id="deviceType">
-                  <SelectValue placeholder="Select type" />
-                </SelectTrigger>
-                <SelectContent>
-                  {DEVICE_TYPES.map((t) => (
-                    <SelectItem key={t} value={t}>
-                      {DEVICE_TYPE_LABELS[t]}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
+                <option value="" disabled>Select type</option>
+                {DEVICE_TYPES.map((t) => (
+                  <option key={t} value={t}>
+                    {DEVICE_TYPE_LABELS[t]}
+                  </option>
+                ))}
               </Select>
             </Field>
             <Field label="Status" required>
               <Select
+                id="deviceStatus"
                 value={form.status}
-                onValueChange={(v) => set("status", v as ICTMapDevice["status"])}
+                onChange={(e) => set("status", e.target.value as ICTMapDevice["status"])}
                 disabled={isPending}
               >
-                <SelectTrigger id="deviceStatus">
-                  <SelectValue placeholder="Select status" />
-                </SelectTrigger>
-                <SelectContent>
-                  {DEVICE_STATUSES.map((s) => (
-                    <SelectItem key={s} value={s}>
-                      <span
-                        className={cn(
-                          "inline-flex items-center px-2 py-0.5 rounded text-xs font-medium",
-                          STATUS_BADGE_CLASS[s]
-                        )}
-                      >
-                        {DEVICE_STATUS_LABELS[s]}
-                      </span>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
+                <option value="" disabled>Select status</option>
+                {DEVICE_STATUSES.map((s) => (
+                  <option key={s} value={s}>
+                    {DEVICE_STATUS_LABELS[s]}
+                  </option>
+                ))}
               </Select>
             </Field>
           </div>
@@ -336,22 +321,18 @@ export default function DeviceForm({
           {/* Row 3: Personnel */}
           <Field label="Assigned Personnel">
             <Select
+              id="personnelId"
               value={form.personnelId || "__none__"}
-              onValueChange={(v) => set("personnelId", v === "__none__" ? "" : v)}
+              onChange={(e) => set("personnelId", e.target.value === "__none__" ? "" : e.target.value)}
               disabled={isPending}
             >
-              <SelectTrigger id="personnelId">
-                <SelectValue placeholder="None" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__none__">— None —</SelectItem>
-                {personnel.map((p) => (
-                  <SelectItem key={p.id} value={p.id}>
-                    {p.fullName}
-                    {p.position ? ` · ${p.position}` : ""}
-                  </SelectItem>
-                ))}
-              </SelectContent>
+              <option value="__none__">— None —</option>
+              {personnel.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.fullName}
+                  {p.position ? ` · ${p.position}` : ""}
+                </option>
+              ))}
             </Select>
           </Field>
 
@@ -359,41 +340,33 @@ export default function DeviceForm({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Field label="Furniture">
               <Select
+                id="furnitureId"
                 value={form.furnitureId || "__none__"}
-                onValueChange={(v) => set("furnitureId", v === "__none__" ? "" : v)}
+                onChange={(e) => set("furnitureId", e.target.value === "__none__" ? "" : e.target.value)}
                 disabled={isPending}
               >
-                <SelectTrigger id="furnitureId">
-                  <SelectValue placeholder="None" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__none__">— None —</SelectItem>
-                  {furniture.map((f) => (
-                    <SelectItem key={f.id} value={f.id}>
-                      {f.furnitureName} ({f.furnitureCode})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
+                <option value="__none__">— None —</option>
+                {furniture.map((f) => (
+                  <option key={f.id} value={f.id}>
+                    {f.furnitureName} ({f.furnitureCode})
+                  </option>
+                ))}
               </Select>
             </Field>
             <Field label="Employee Seat">
               <Select
+                id="employeeSeatId"
                 value={form.employeeSeatId || "__none__"}
-                onValueChange={(v) => set("employeeSeatId", v === "__none__" ? "" : v)}
+                onChange={(e) => set("employeeSeatId", e.target.value === "__none__" ? "" : e.target.value)}
                 disabled={isPending}
               >
-                <SelectTrigger id="employeeSeatId">
-                  <SelectValue placeholder="None" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__none__">— None —</SelectItem>
-                  {seats.map((s) => (
-                    <SelectItem key={s.id} value={s.id}>
-                      {s.seatCode}
-                      {s.personnelName ? ` · ${s.personnelName}` : ""}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
+                <option value="__none__">— None —</option>
+                {seats.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.seatCode}
+                    {s.personnelName ? ` · ${s.personnelName}` : ""}
+                  </option>
+                ))}
               </Select>
             </Field>
           </div>

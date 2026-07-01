@@ -1,4 +1,4 @@
-﻿"use server";
+"use server";
 
 import { mkdir, writeFile } from "fs/promises";
 import path from "path";
@@ -297,7 +297,7 @@ export async function uploadMapBackgroundAction(mapId: string, formData: FormDat
   const file = formData.get("image") as File | null;
   if (!file || file.size === 0) return { ok: false, message: "No file provided." };
   if (!file.type.startsWith("image/")) return { ok: false, message: "Only image files are allowed." };
-  if (file.size > 10 * 1024 * 1024) return { ok: false, message: "Image must be under 10 MB." };
+  if (file.size > 50 * 1024 * 1024) return { ok: false, message: "Image must be under 50 MB." };
 
   const ext = file.name.split(".").pop() || "png";
   const fileName = `map-${mapId}-${Date.now()}.${ext}`;

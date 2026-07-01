@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useCallback, useMemo } from "react";
 import {
@@ -41,6 +41,8 @@ const TYPE_BG: Record<ICTMapDevice["type"], string> = {
   CCTV:          "#fef9c3", // yellow-100
   NVR:           "#fef3c7", // amber-100
   UPS:           "#d1fae5", // emerald-100
+  ROUTER:        "#fed7aa", // orange-200
+  IP_PHONE:      "#fce7f3", // pink-100
   OTHER:         "#f3f4f6", // gray-100
 };
 

@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useRef, useState, useEffect, useCallback } from "react";
 import type { ICTMapFurniture, ICTMapSeat, ICTMapDevice, ICTMapConnection } from "@/app/(app)/ict-management/infrastructure-map/actions";
@@ -156,26 +156,26 @@ export function MapCanvas({
       onMouseLeave={handleMouseUp}
     >
       <div style={mapStyle} onClick={handleCanvasClick}>
-        {/* Background layer */}
-        {layers.background && (
-          <div className="absolute inset-0 overflow-hidden" data-canvasbg="true">
-            <OfficeMapBackground
-              mode={mapPresentation}
-              className="absolute inset-0 pointer-events-none"
-            />
-            {imageUrl && mapPresentation === "detailed" && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={imageUrl}
-                alt=""
-                aria-hidden="true"
-                className="absolute inset-0 h-full w-full object-fill opacity-[0.035] mix-blend-multiply pointer-events-none"
-                draggable={false}
-                data-canvasbg="true"
-              />
-            )}
-          </div>
-        )}
+          {/* Background layer */}
+          {layers.background && (
+            <div className="absolute inset-0 overflow-hidden bg-slate-50 dark:bg-slate-900" data-canvasbg="true">
+              {imageUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={imageUrl}
+                  alt="Map Background"
+                  className="absolute inset-0 h-full w-full object-contain pointer-events-none"
+                  draggable={false}
+                  data-canvasbg="true"
+                />
+              ) : (
+                <OfficeMapBackground
+                  mode={mapPresentation}
+                  className="absolute inset-0 pointer-events-none"
+                />
+              )}
+            </div>
+          )}
         {/* Connection layer — SVG */}
         {layers.connections && (
           <ConnectionLayer

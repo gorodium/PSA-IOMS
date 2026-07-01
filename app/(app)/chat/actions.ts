@@ -72,6 +72,12 @@ export type ChatSnapshot = {
       customEmojiUrl: string | null;
       customEmojiName: string | null;
     }>;
+    replyTo: {
+      id: string;
+      senderName: string;
+      body: string;
+      isUnsent: boolean;
+    } | null;
   }>;
   customEmojis: Array<{
     id: string;
@@ -306,6 +312,14 @@ export async function getChatSnapshotAction(selectedChannelId?: string | null, s
                 }
               }
             }
+          },
+          replyTo: {
+            select: {
+              id: true,
+              body: true,
+              deletedAt: true,
+              sender: { select: { name: true } }
+            }
           }
         },
         orderBy: {
@@ -352,7 +366,13 @@ export async function getChatSnapshotAction(selectedChannelId?: string | null, s
           customEmojiId: r.customEmojiId,
           customEmojiUrl: r.customEmoji?.imageUrl ?? null,
           customEmojiName: r.customEmoji?.name ?? null
-        })) ?? []
+        })) ?? [],
+        replyTo: (message as unknown as { replyTo: { id: string; body: string; deletedAt: Date | null; sender: { name: string } | null } | null }).replyTo ? {
+          id: (message as unknown as { replyTo: { id: string; body: string; deletedAt: Date | null; sender: { name: string } | null } | null }).replyTo!.id,
+          senderName: (message as unknown as { replyTo: { id: string; body: string; deletedAt: Date | null; sender: { name: string } | null } | null }).replyTo!.sender?.name ?? "System",
+          body: (message as unknown as { replyTo: { id: string; body: string; deletedAt: Date | null; sender: { name: string } | null } | null }).replyTo!.deletedAt ? "" : (message as unknown as { replyTo: { id: string; body: string; deletedAt: Date | null; sender: { name: string } | null } | null }).replyTo!.body,
+          isUnsent: (message as unknown as { replyTo: { id: string; body: string; deletedAt: Date | null; sender: { name: string } | null } | null }).replyTo!.deletedAt !== null
+        } : null
       })),
     customEmojis: customEmojis.map(ce => ({
       id: ce.id,
@@ -374,6 +394,7 @@ export async function sendChatMessageAction(formData: FormData): Promise<ChatAct
   const channelId = String(formData.get("channelId") ?? "");
   const body = String(formData.get("body") ?? "").trim();
   const attachmentFile = formData.get("attachment") as File | null;
+  const replyToId = formData.get("replyToId") ? String(formData.get("replyToId")) : null;
 
   if (!channelId) {
     return { ok: false, message: "Choose a chat channel." };
@@ -404,6 +425,7 @@ export async function sendChatMessageAction(formData: FormData): Promise<ChatAct
       senderUserId: user.id,
       messageType: ChatMessageType.USER_MESSAGE,
       body: body || (attachment && !attachment.mimeType.startsWith('image/') ? `Attached ${attachment.fileName}` : ""),
+      replyToId,
       ...(attachment
         ? {
             attachments: {

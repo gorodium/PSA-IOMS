@@ -149,10 +149,10 @@ export default async function ConvocationPage() {
                   </Button>
                   {activePdfTemplate ? (
                     <Button asChild size="sm">
-                      <Link href={`/settings/pdf-templates/${activePdfTemplate.id}/overlay?source=convocation&programId=${currentProgram.id}&mode=download`}>
+                      <a href={`/settings/pdf-templates/${activePdfTemplate.id}/overlay?source=convocation&programId=${currentProgram.id}&mode=download`}>
                         <FileText className="h-4 w-4 mr-2" />
                         Download PDF
-                      </Link>
+                      </a>
                     </Button>
                   ) : (
                     <Button disabled size="sm" title="Please set a default PDF template in Admin settings first">

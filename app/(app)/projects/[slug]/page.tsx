@@ -4,7 +4,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { checkUserPermission } from "@/lib/permissions";
 import { canEditProject as canEditProjectAccess } from "@/lib/project-access";
 import { ProjectDeleteButtons } from "@/components/projects/ProjectDeleteButtons";
-import { MonthlyProjectDetails } from "@/components/projects/MonthlyProjectDetails";
+import { PeriodProjectDetails } from "@/components/projects/PeriodProjectDetails";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -68,7 +68,7 @@ export default async function ProjectDetailPage({ params }: PageProps) {
 
       {/* ── Monthly Monitoring Board ─────────────────────────────────────── */}
       <div className="mt-6">
-        <MonthlyProjectDetails project={project} canEdit={canEditThisProject} allPersonnel={allPersonnel} />
+        <PeriodProjectDetails project={project} canEdit={canEditThisProject} allPersonnel={allPersonnel} />
       </div>
 
       {canDeleteThisProject && (

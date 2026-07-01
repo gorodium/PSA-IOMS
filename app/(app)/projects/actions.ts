@@ -201,6 +201,7 @@ export async function createProjectAction(formData: FormData) {
       workloadWeight: parsed.data.workloadWeight,
       estimatedMandays: parsed.data.estimatedMandays,
       uiLayout: parsed.data.uiLayout,
+      showDescription: parsed.data.showDescription,
       showOperationWorkload: parsed.data.showOperationWorkload,
       showDeadlineSubmission: parsed.data.showDeadlineSubmission,
       showDateSubmitted: parsed.data.showDateSubmitted,
@@ -872,7 +873,10 @@ export type ProjectDetailsUpdatePayload = {
   showDateSubmitted?: boolean;
   showTotalSamplesDocuments?: boolean;
   showResponseRate?: boolean;
+  description?: string | null;
+  showDescription?: boolean;
   totalSamplesDocumentsLabel?: string;
+  customTaskColumns?: unknown;
   cycles: {
     id?: string;
     cycleName: string;
@@ -926,7 +930,10 @@ export async function updateProjectMonthlyDetails(payload: ProjectDetailsUpdateP
         showDateSubmitted: payload.showDateSubmitted !== undefined ? payload.showDateSubmitted : undefined,
         showTotalSamplesDocuments: payload.showTotalSamplesDocuments !== undefined ? payload.showTotalSamplesDocuments : undefined,
         showResponseRate: payload.showResponseRate !== undefined ? payload.showResponseRate : undefined,
+        description: payload.description !== undefined ? payload.description : undefined,
+        showDescription: payload.showDescription !== undefined ? payload.showDescription : undefined,
         totalSamplesDocumentsLabel: payload.totalSamplesDocumentsLabel !== undefined ? payload.totalSamplesDocumentsLabel : undefined,
+        customTaskColumns: payload.customTaskColumns !== undefined ? (payload.customTaskColumns as any) : undefined,
       }
     });
 

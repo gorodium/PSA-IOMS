@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import type { ICTMapSeat, ICTMapDevice, ICTMapFurniture } from "@/app/(app)/ict-management/infrastructure-map/actions";
 import { cn } from "@/lib/utils";
@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import {
   X, Edit, User, MapPin, Hash, Building2, Monitor, Laptop, Printer,
-  Server, HardDrive, Shield, Network, Wifi, Camera, Battery, Cpu
+  Server, HardDrive, Shield, Network, Wifi, Camera, Battery, Cpu, Trash2
 } from "lucide-react";
 
 function DeviceTypeIcon({ type }: { type: string }) {
@@ -40,9 +40,10 @@ type Props = {
   isAdmin: boolean;
   onClose: () => void;
   onEdit: (seat: ICTMapSeat) => void;
+  onDelete: (id: string) => void;
 };
 
-export function EmployeeSeatDrawer({ seat, devices, furniture, isAdmin, onClose, onEdit }: Props) {
+export function EmployeeSeatDrawer({ seat, devices, furniture, isAdmin, onClose, onEdit, onDelete }: Props) {
   const isOpen = seat !== null;
   const assignedFurniture = furniture.find((f) => f.id === seat?.furnitureId);
 
@@ -125,10 +126,23 @@ export function EmployeeSeatDrawer({ seat, devices, furniture, isAdmin, onClose,
             </div>
 
             {isAdmin && (
-              <div className="p-4 border-t">
-                <Button size="sm" className="w-full" onClick={() => onEdit(seat)}>
+              <div className="p-4 border-t flex gap-2">
+                <Button size="sm" className="flex-1" onClick={() => onEdit(seat)}>
                   <Edit className="h-4 w-4 mr-2" />
                   Edit Seat Details
+                </Button>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  className="flex-none"
+                  onClick={() => {
+                    if (confirm("Are you sure you want to delete this seat?")) {
+                      onDelete(seat.id);
+                    }
+                  }}
+                  title="Delete Seat"
+                >
+                  <Trash2 className="h-4 w-4" />
                 </Button>
               </div>
             )}

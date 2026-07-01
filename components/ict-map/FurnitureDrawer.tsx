@@ -1,7 +1,7 @@
-﻿'use client';
+'use client';
 
 import React from 'react';
-import { X, Pencil, LayoutDashboard, UserCircle, Cpu } from 'lucide-react';
+import { X, Pencil, LayoutDashboard, UserCircle, Cpu, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
@@ -17,6 +17,7 @@ interface FurnitureDrawerProps {
   isAdmin:   boolean;
   onClose:   () => void;
   onEdit:    (f: ICTMapFurniture) => void;
+  onDelete:  (id: string) => void;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -60,6 +61,7 @@ export function FurnitureDrawer({
   isAdmin,
   onClose,
   onEdit,
+  onDelete,
 }: FurnitureDrawerProps) {
   const isOpen = Boolean(furniture);
 
@@ -224,18 +226,30 @@ export function FurnitureDrawer({
               )}
             </div>
 
-            {/* Footer */}
-            {isAdmin && (
-              <div className="border-t border-slate-100 px-4 py-3">
-                <Button
-                  className="w-full gap-2 bg-blue-600 text-white hover:bg-blue-700"
-                  onClick={() => onEdit(furniture)}
-                >
-                  <Pencil className="h-3.5 w-3.5" />
-                  Edit Furniture
-                </Button>
-              </div>
-            )}
+              {/* Admin Actions */}
+              {isAdmin && (
+                <div className="border-t border-slate-100 px-4 py-3 flex gap-2">
+                  <Button
+                    className="flex-1 gap-2 bg-blue-600 text-white hover:bg-blue-700"
+                    onClick={() => onEdit(furniture)}
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                    Edit Furniture
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    className="flex-none"
+                    onClick={() => {
+                      if (confirm("Are you sure you want to delete this furniture?")) {
+                        onDelete(furniture.id);
+                      }
+                    }}
+                    title="Delete Furniture"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
           </>
         )}
       </div>

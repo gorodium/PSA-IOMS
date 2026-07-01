@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect, useTransition } from "react";
 import {
@@ -11,13 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
@@ -50,6 +44,8 @@ const CONNECTION_TYPE_LABELS: Record<ICTMapConnection["connectionType"], string>
   USB: "USB",
   SHARED_PRINTER: "Shared Printer",
   UNKNOWN: "Unknown",
+  OTHER: "Other",
+  BLUETOOTH: "Bluetooth",
 };
 
 const CONNECTION_TYPE_BADGE: Record<ICTMapConnection["connectionType"], string> = {
@@ -60,6 +56,8 @@ const CONNECTION_TYPE_BADGE: Record<ICTMapConnection["connectionType"], string> 
   USB: "bg-lime-100 text-lime-700",
   SHARED_PRINTER: "bg-pink-100 text-pink-700",
   UNKNOWN: "bg-gray-100 text-gray-500",
+  OTHER: "bg-gray-100 text-gray-500",
+  BLUETOOTH: "bg-indigo-100 text-indigo-700",
 };
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -229,78 +227,58 @@ export default function ConnectionForm({
           {/* Source Device */}
           <Field label="Source Device" required>
             <Select
+              id="sourceDeviceId"
               value={form.sourceDeviceId || "__none__"}
-              onValueChange={(v) => set("sourceDeviceId", v === "__none__" ? "" : v)}
+              onChange={(e) => set("sourceDeviceId", e.target.value === "__none__" ? "" : e.target.value)}
               disabled={isPending || isEdit}
             >
-              <SelectTrigger id="sourceDeviceId">
-                <SelectValue placeholder="Select source device" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__none__" disabled>
-                  — Select source —
-                </SelectItem>
-                {devices.map((d) => (
-                  <SelectItem key={d.id} value={d.id}>
-                    {deviceLabel(d)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
+              <option value="__none__" disabled>
+                — Select source —
+              </option>
+              {devices.map((d) => (
+                <option key={d.id} value={d.id}>
+                  {deviceLabel(d)}
+                </option>
+              ))}
             </Select>
           </Field>
 
           {/* Target Device */}
           <Field label="Target Device" required>
             <Select
+              id="targetDeviceId"
               value={form.targetDeviceId || "__none__"}
-              onValueChange={(v) => set("targetDeviceId", v === "__none__" ? "" : v)}
+              onChange={(e) => set("targetDeviceId", e.target.value === "__none__" ? "" : e.target.value)}
               disabled={isPending || isEdit}
             >
-              <SelectTrigger id="targetDeviceId">
-                <SelectValue placeholder="Select target device" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__none__" disabled>
-                  — Select target —
-                </SelectItem>
-                {devices
-                  .filter((d) => d.id !== form.sourceDeviceId)
-                  .map((d) => (
-                    <SelectItem key={d.id} value={d.id}>
-                      {deviceLabel(d)}
-                    </SelectItem>
-                  ))}
-              </SelectContent>
+              <option value="__none__" disabled>
+                — Select target —
+              </option>
+              {devices
+                .filter((d) => d.id !== form.sourceDeviceId)
+                .map((d) => (
+                  <option key={d.id} value={d.id}>
+                    {deviceLabel(d)}
+                  </option>
+                ))}
             </Select>
           </Field>
 
           {/* Connection Type */}
           <Field label="Connection Type" required>
             <Select
+              id="connectionType"
               value={form.connectionType}
-              onValueChange={(v) =>
-                set("connectionType", v as ICTMapConnection["connectionType"])
+              onChange={(e) =>
+                set("connectionType", e.target.value as ICTMapConnection["connectionType"])
               }
               disabled={isPending}
             >
-              <SelectTrigger id="connectionType">
-                <SelectValue placeholder="Select type" />
-              </SelectTrigger>
-              <SelectContent>
-                {CONNECTION_TYPES.map((t) => (
-                  <SelectItem key={t} value={t}>
-                    <span
-                      className={cn(
-                        "inline-flex items-center px-2 py-0.5 rounded text-xs font-medium mr-2",
-                        CONNECTION_TYPE_BADGE[t]
-                      )}
-                    >
-                      {t}
-                    </span>
-                    {CONNECTION_TYPE_LABELS[t]}
-                  </SelectItem>
-                ))}
-              </SelectContent>
+              {CONNECTION_TYPES.map((t) => (
+                <option key={t} value={t}>
+                  {CONNECTION_TYPE_LABELS[t]}
+                </option>
+              ))}
             </Select>
           </Field>
 

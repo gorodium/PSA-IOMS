@@ -1,6 +1,6 @@
 "use server";
 
-import { mkdir, writeFile } from "fs/promises";
+import { mkdir, writeFile, readFile } from "fs/promises";
 import path from "path";
 import { revalidatePath } from "next/cache";
 import { PDFDocument } from "pdf-lib";
@@ -233,5 +233,81 @@ export async function getConvocationPreviewDataAction(programId: string): Promis
     return await getConvocationOverlayData(programId);
   } catch {
     return null;
+  }
+}
+
+export async function replacePdfTemplatePageAction(
+  _previousState: PdfTemplateActionResult,
+  formData: FormData
+): Promise<PdfTemplateActionResult> {
+  const user = await requireSuperAdmin();
+  const templateId = String(formData.get("templateId") ?? "");
+  const pageNumber = parseInt(String(formData.get("pageNumber") ?? "0"), 10);
+  const file = formData.get("file");
+
+  if (!templateId || pageNumber < 1) {
+    return { ok: false, message: "Invalid template or page number." };
+  }
+
+  if (!(file instanceof File) || file.size === 0) {
+    return { ok: false, message: "Choose a 1-page PDF file to upload." };
+  }
+  
+  if (file.size > 25 * 1024 * 1024) {
+    return { ok: false, message: "PDF files must be 25 MB or smaller." };
+  }
+
+  const existing = await db.pdfTemplate.findUnique({ where: { id: templateId } });
+  if (!existing) {
+    return { ok: false, message: "PDF template could not be found." };
+  }
+
+  if (pageNumber > existing.pageCount) {
+    return { ok: false, message: "Page number exceeds the template's page count." };
+  }
+
+  try {
+    const newBytes = Buffer.from(await file.arrayBuffer());
+    const newPdf = await PDFDocument.load(newBytes);
+    
+    if (newPdf.getPageCount() !== 1) {
+      return { ok: false, message: "The replacement PDF must contain exactly one page." };
+    }
+
+    const filePath = path.join(process.cwd(), "public", existing.fileUrl.replace(/^\//, ""));
+    const existingBytes = await readFile(filePath);
+    const existingPdf = await PDFDocument.load(existingBytes);
+
+    const [copiedPage] = await existingPdf.copyPages(newPdf, [0]);
+    existingPdf.removePage(pageNumber - 1);
+    existingPdf.insertPage(pageNumber - 1, copiedPage);
+
+    const updatedBytes = await existingPdf.save();
+    await writeFile(filePath, updatedBytes);
+
+    const fieldMap = parsePdfFieldMap(existing.fieldMap, existing.pageCount);
+    const box = copiedPage.getMediaBox();
+    fieldMap.pageSizes[pageNumber - 1] = { width: box.width, height: box.height };
+
+    await db.pdfTemplate.update({
+      where: { id: templateId },
+      data: {
+        fieldMap: fieldMap as unknown as Prisma.InputJsonValue
+      }
+    });
+
+    await writeAuditLog({
+      userId: user.id,
+      action: "REPLACE_PAGE",
+      entityType: "PdfTemplate",
+      entityId: templateId,
+      newValueJson: { pageNumber }
+    });
+
+    revalidatePath("/settings/pdf-templates");
+    return { ok: true, message: `Page ${pageNumber} has been successfully replaced.` };
+  } catch (error) {
+    console.error("Failed to replace PDF page:", error);
+    return { ok: false, message: error instanceof Error ? error.message : "Failed to replace PDF page." };
   }
 }

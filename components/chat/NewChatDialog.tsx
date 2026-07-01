@@ -6,7 +6,6 @@ import { Input } from "@/components/ui/input";
 import { Search, Loader2 } from "lucide-react";
 import { searchChatUsersAction, createDirectMessageAction } from "@/app/(app)/chat/actions";
 import { useChatGlobal } from "@/components/chat/ChatGlobalProvider";
-import { useSession } from "next-auth/react";
 import { formatChatName } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 

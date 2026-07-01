@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { formatDistanceToNow, format } from "date-fns";
-import { Bell, FileText, ImageIcon, Paperclip, Search, Send, Smile, Trash2, X, Info, Clock, Hash, ShieldAlert, Car, Building2, ChevronRight, AlertCircle, MessageSquare } from "lucide-react";
+import { Bell, FileText, ImageIcon, Paperclip, Search, Send, Smile, Trash2, X, Info, Clock, Hash, ShieldAlert, Car, Building2, ChevronRight, AlertCircle, MessageSquare, Reply } from "lucide-react";
 import { formatChatName } from "@/lib/utils";
 import {
   getChatSnapshotAction,
@@ -187,6 +187,7 @@ export function FullPageChat() {
   };
   const [showEmoticons, setShowEmoticons] = useState(false);
   const [error, setError] = useState("");
+  const [replyingTo, setReplyingTo] = useState<ChatSnapshot["messages"][0] | null>(null);
   const [isPending, startTransition] = useTransition();
   
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -266,6 +267,9 @@ export function FullPageChat() {
 
     const formData = new FormData(event.currentTarget);
     formData.set("channelId", channelId);
+    if (replyingTo) {
+      formData.set("replyToId", replyingTo.id as string);
+    }
     const result = await sendChatMessageAction(formData);
     if (!result.ok) {
       setError(result.message);
@@ -274,6 +278,7 @@ export function FullPageChat() {
 
     setMessageBody("");
     setSelectedFile(null);
+    setReplyingTo(null);
     if (fileInputRef.current) fileInputRef.current.value = "";
     refreshChat(channelId, searchQuery);
     
@@ -449,7 +454,8 @@ export function FullPageChat() {
                   onClick={() => setSelectedMessageId(isSelected ? null : message.id)}
                   className={cn(
                     "group relative flex w-full gap-3 lg:gap-4 rounded-xl px-2 lg:px-3 py-2 transition-colors cursor-pointer",
-                    message.isOwnMessage ? "bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/50 dark:hover:bg-blue-900/50" : "hover:bg-muted/50",
+                    message.isOwnMessage ? "flex-row-reverse" : "flex-row",
+                    "hover:bg-muted/50",
                     isSelected && "bg-muted/70 ring-1 ring-border"
                   )}
                 >
@@ -468,15 +474,21 @@ export function FullPageChat() {
                     )}
                   </div>
                   
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-baseline gap-2">
+                  <div className={cn("min-w-0 flex-1 flex flex-col", message.isOwnMessage ? "items-end" : "items-start")}>
+                    <div className={cn("flex items-baseline gap-2", message.isOwnMessage ? "flex-row-reverse" : "flex-row")}>
                       <span className="font-semibold text-sm text-foreground">{message.isOwnMessage ? "You" : message.senderName}</span>
                       <span className="text-[11px] text-muted-foreground" title={format(new Date(message.createdAt), "PPpp")}>
                         {formatDistanceToNow(new Date(message.createdAt), { addSuffix: true })}
                       </span>
                     </div>
 
-                    <div className="mt-0.5 text-[13px] lg:text-sm text-foreground/90">
+                    <div className={cn("mt-0.5 text-[13px] lg:text-sm text-foreground/90 flex flex-col max-w-[85%]", message.isOwnMessage ? "items-end text-right" : "items-start text-left")}>
+                      {message.replyTo && (
+                        <div className={cn("mb-2 w-fit max-w-full rounded-md border-l-2 border-primary/50 bg-muted/50 p-2 text-xs text-muted-foreground text-left", message.isOwnMessage && "border-r-2 border-l-0")}>
+                          <p className="font-semibold text-[10px] uppercase mb-0.5 text-primary">{message.replyTo.senderName}</p>
+                          <p className="line-clamp-2 opacity-80">{message.replyTo.isUnsent ? "Unsent message" : message.replyTo.body}</p>
+                        </div>
+                      )}
                       {message.isUnsent ? (
                         <p className="italic text-muted-foreground opacity-75">{message.senderName} unsent a message</p>
                       ) : (
@@ -491,22 +503,36 @@ export function FullPageChat() {
                     </div>
                   </div>
 
-                  {message.isOwnMessage && !message.isUnsent && (
-                    <div className="absolute right-4 top-4 opacity-0 transition-opacity group-hover:opacity-100 bg-background rounded-md shadow-sm border">
+                  {!message.isUnsent && (
+                    <div className={cn("absolute top-4 opacity-0 transition-opacity group-hover:opacity-100 bg-background rounded-md shadow-sm border flex", message.isOwnMessage ? "left-4" : "right-4")}>
                        <button
                          type="button"
-                         title="Unsend message"
-                         onClick={async (e) => {
+                         title="Reply"
+                         onClick={(e) => {
                            e.stopPropagation();
-                           if (window.confirm("Are you sure you want to unsend this message?")) {
-                             await unsendChatMessageAction(message.id);
-                             refreshChat(selectedChannelId);
-                           }
+                           setReplyingTo(message);
+                           formRef.current?.querySelector('textarea')?.focus();
                          }}
-                         className="flex h-8 w-8 items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-md"
+                         className="flex h-8 w-8 items-center justify-center text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-l-md"
                        >
-                         <Trash2 className="h-4 w-4" />
+                         <Reply className="h-4 w-4" />
                        </button>
+                       {message.isOwnMessage && (
+                         <button
+                           type="button"
+                           title="Unsend message"
+                           onClick={async (e) => {
+                             e.stopPropagation();
+                             if (window.confirm("Are you sure you want to unsend this message?")) {
+                               await unsendChatMessageAction(message.id);
+                               refreshChat(selectedChannelId);
+                             }
+                           }}
+                           className="flex h-8 w-8 items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-r-md border-l"
+                         >
+                           <Trash2 className="h-4 w-4" />
+                         </button>
+                       )}
                     </div>
                   )}
                 </article>
@@ -515,11 +541,23 @@ export function FullPageChat() {
           )}
         </div>
 
-        <div className="p-4 lg:p-6 pt-0">
+        <div className="p-3 lg:p-4 border-t bg-background shrink-0">
           <form ref={formRef} onSubmit={handleSend} className="relative rounded-xl border bg-background shadow-sm focus-within:ring-1 focus-within:ring-primary/50 transition-all">
+            {replyingTo && (
+              <div className="flex items-center justify-between rounded-t-xl border-b bg-muted/50 px-4 py-2 text-xs">
+                <div className="flex flex-col overflow-hidden pr-2">
+                  <span className="font-semibold text-primary">Replying to {replyingTo.senderName}</span>
+                  <span className="truncate text-muted-foreground">{replyingTo.isUnsent ? "Unsent message" : replyingTo.body}</span>
+                </div>
+                <button type="button" onClick={() => setReplyingTo(null)} className="text-muted-foreground hover:text-foreground shrink-0 transition-colors">
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            )}
             {error && <div className="absolute -top-12 left-0 right-0 rounded-md bg-destructive/10 px-3 py-2 text-xs text-destructive ring-1 ring-destructive/20 backdrop-blur-sm">{error}</div>}
             
             <input type="hidden" name="channelId" value={selectedChannelId ?? ""} />
+            {replyingTo && <input type="hidden" name="replyToId" value={replyingTo.id} />}
             <input
               ref={fileInputRef}
               type="file"

@@ -37,7 +37,7 @@ export function ConfirmPostponeButton() {
           <AlertDialogHeader>
             <AlertDialogTitle>Postpone this program?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will move the convocation program to the next Monday. If it's on the calendar, the event will also be shifted. Are you sure you want to proceed?
+              This will move the convocation program to the next Monday. If it&apos;s on the calendar, the event will also be shifted. Are you sure you want to proceed?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

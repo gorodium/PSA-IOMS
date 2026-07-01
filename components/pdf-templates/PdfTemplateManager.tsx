@@ -8,7 +8,8 @@ import {
   deletePdfTemplateAction,
   savePdfTemplateFieldsAction,
   setDefaultPdfTemplateAction,
-  getConvocationPreviewDataAction
+  getConvocationPreviewDataAction,
+  replacePdfTemplatePageAction
 } from "@/app/(app)/settings/pdf-templates/actions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -376,6 +377,67 @@ function SetDefaultTemplateForm({ templateId, isDefault, feature }: { templateId
       <input type="hidden" name="templateId" value={templateId} />
       <Button type="submit" variant="secondary" className="w-full" disabled={isDefault || isPending}>
         {isPending ? "Saving..." : isDefault ? "Currently Default" : `Set as Default for ${feature}`}
+      </Button>
+      <FormMessage state={state} />
+    </form>
+  );
+}
+
+function ReplacePdfPageForm({ templateId, pageCount }: { templateId: string; pageCount: number }) {
+  const [state, setState] = useState(initialPdfTemplateActionState);
+  const [isPending, setIsPending] = useState(false);
+
+  async function handleReplace(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const formData = new FormData(form);
+    const file = formData.get("file");
+
+    if (!(file instanceof File) || file.size === 0) {
+      setState({ ok: false, message: "Choose a PDF file to upload." });
+      return;
+    }
+
+    if (file.size > 25 * 1024 * 1024) {
+      setState({ ok: false, message: "PDF files must be 25 MB or smaller." });
+      return;
+    }
+
+    setIsPending(true);
+    setState(initialPdfTemplateActionState);
+
+    try {
+      const result = await replacePdfTemplatePageAction(initialPdfTemplateActionState, formData);
+      setState(result);
+      if (result.ok) {
+        form.reset();
+      }
+    } catch (e) {
+      setState({ ok: false, message: e instanceof Error ? e.message : "Failed to replace page." });
+    } finally {
+      setIsPending(false);
+    }
+  }
+
+  return (
+    <form onSubmit={handleReplace} className="space-y-3 pt-4 border-t">
+      <input type="hidden" name="templateId" value={templateId} />
+      <div>
+        <label className="text-sm font-semibold">Replace Specific Page</label>
+        <p className="text-xs text-muted-foreground leading-snug mt-1">
+          Upload a new 1-page PDF to replace a single page in this template without losing your field configurations.
+        </p>
+      </div>
+      <div className="flex gap-2 items-center">
+        <Select name="pageNumber" defaultValue="1" className="w-[110px] h-9">
+          {Array.from({ length: pageCount }).map((_, i) => (
+            <option key={i + 1} value={i + 1}>Page {i + 1}</option>
+          ))}
+        </Select>
+        <Input type="file" name="file" accept="application/pdf" className="h-9" required />
+      </div>
+      <Button type="submit" variant="secondary" className="w-full h-9" disabled={isPending}>
+        {isPending ? "Replacing..." : "Replace Page"}
       </Button>
       <FormMessage state={state} />
     </form>
@@ -1130,6 +1192,7 @@ export function PdfTemplateManager({ templates, programs }: { templates: Templat
               <CardContent className="space-y-3">
                 <SaveFieldsForm templateId={selectedTemplate.id} fieldMap={fieldMap} onSaved={markSaved} />
                 <SetDefaultTemplateForm templateId={selectedTemplate.id} isDefault={selectedTemplate.isDefault} feature={selectedTemplate.templateFeature} />
+                <ReplacePdfPageForm templateId={selectedTemplate.id} pageCount={selectedTemplate.pageCount} />
                 <form action={archivePdfTemplateAction.bind(null, selectedTemplate.id)}>
                   <Button type="submit" variant="outline" className="w-full border-red-200 text-red-700 hover:bg-red-50">
                     <Archive className="h-4 w-4 mr-2" />

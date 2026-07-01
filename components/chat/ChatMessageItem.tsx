@@ -3,7 +3,7 @@
 import { useState, useTransition, useMemo, useEffect } from "react";
 import Image from "next/image";
 import { formatDistanceToNow, format } from "date-fns";
-import { Smile, Trash2 } from "lucide-react";
+import { Smile, Trash2, Reply } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { unsendChatMessageAction, toggleChatReactionAction, type ChatSnapshot } from "@/app/(app)/chat/actions";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -59,6 +59,7 @@ export function ChatMessageItem({
   currentUserRole,
   selectedChannelId,
   refreshChat,
+  onReply,
   children 
 }: { 
   message: MessageType; 
@@ -67,7 +68,8 @@ export function ChatMessageItem({
   currentUserRole: string;
   selectedChannelId: string | null;
   refreshChat: (id?: string | null) => void;
-  children: React.ReactNode; 
+  onReply?: (message: MessageType) => void;
+  children?: React.ReactNode; 
 }) {
   const [isPending, startTransition] = useTransition();
   const [isReactionPickerOpen, setIsReactionPickerOpen] = useState(false);
@@ -135,6 +137,15 @@ export function ChatMessageItem({
           <div className={cn("text-[14px] px-3.5 py-2 w-fit max-w-[85%] break-words leading-relaxed", 
             message.isOwnMessage ? "bg-slate-700 text-slate-50 dark:bg-slate-700 rounded-2xl rounded-tr-sm" : "bg-muted text-foreground rounded-2xl rounded-tl-sm"
           )}>
+            {message.replyTo && (
+              <div className={cn(
+                "mb-2 rounded-md p-2 text-xs border-l-2",
+                message.isOwnMessage ? "bg-slate-800/50 border-slate-400 text-slate-300" : "bg-background/60 border-primary/50 text-muted-foreground"
+              )}>
+                <p className="font-semibold text-[10px] uppercase mb-0.5">{message.replyTo.senderName}</p>
+                <p className="line-clamp-2 opacity-80">{message.replyTo.isUnsent ? "Unsent message" : message.replyTo.body}</p>
+              </div>
+            )}
             {message.isUnsent ? (
               <p className="italic opacity-75 text-xs text-center">Unsent a message</p>
             ) : (
@@ -190,6 +201,12 @@ export function ChatMessageItem({
                 </PopoverContent>
               </Popover>
               
+              {onReply && (
+                <button type="button" onClick={() => onReply(message)} className="flex h-7 w-7 items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors" title="Reply">
+                  <Reply className="h-3.5 w-3.5" />
+                </button>
+              )}
+
               {message.isOwnMessage && (
                 <AlertDialog>
                   <AlertDialogTrigger asChild>

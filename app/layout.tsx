@@ -13,6 +13,8 @@ export const metadata: Metadata = {
   description: "Integrated Operations Management System"
 };
 
+import { RouteCleanup } from "@/components/layout/RouteCleanup";
+
 export default function RootLayout({
   children
 }: Readonly<{
@@ -36,6 +38,7 @@ export default function RootLayout({
         />
       </head>
       <body className={inter.className}>
+        <RouteCleanup />
         <NextTopLoader color="#3b82f6" showSpinner={false} />
         {children}
       </body>

@@ -23,6 +23,13 @@ interface ProjectPersonnel {
 
 interface CustomValues {
   disabledColumns?: Record<string, boolean>;
+  [key: string]: unknown;
+}
+
+export interface CustomColumnDef {
+  id: string;
+  name: string;
+  type: "text" | "number";
 }
 
 interface Task {
@@ -53,11 +60,14 @@ interface Project {
   subcategory: string | null;
   frequency: string;
   customFrequency: string | null;
+  description: string | null;
+  showDescription: boolean | null;
   showDeadlineSubmission: boolean | null;
   showDateSubmitted: boolean | null;
   showTotalSamplesDocuments: boolean | null;
   showResponseRate: boolean | null;
   totalSamplesDocumentsLabel: string | null;
+  customTaskColumns?: unknown;
   personnel: ProjectPersonnel[];
   cycles: Cycle[];
 }
@@ -78,7 +88,7 @@ const computeCycleStatus = (tasks: Task[], today: Date) => {
   return "Active";
 };
 
-export function MonthlyProjectDetails({ project, canEdit, allPersonnel }: { project: Project, canEdit: boolean, allPersonnel: Personnel[] }) {
+export function PeriodProjectDetails({ project, canEdit, allPersonnel }: { project: Project, canEdit: boolean, allPersonnel: Personnel[] }) {
   const [isEditing, setIsEditing] = useState(false);
   const [showSuccessPrompt, setShowSuccessPrompt] = useState(false);
   const [isPending, startTransition] = useTransition();
@@ -108,12 +118,17 @@ export function MonthlyProjectDetails({ project, canEdit, allPersonnel }: { proj
   const [otherInvolvedEmployeeIds, setOtherInvolvedEmployeeIds] = useState<string[]>(initialOthers.length > 0 ? initialOthers : [""]);
   const [hasOthers, setHasOthers] = useState(initialOthers.length > 0);
 
+  // Description State
+  const [description, setDescription] = useState(project.description || "");
+  const [showDescription, setShowDescription] = useState(project.showDescription ?? true);
+
   // Column Visibility State
   const [showDeadline, setShowDeadline] = useState(project.showDeadlineSubmission ?? true);
   const [showSubmitted, setShowSubmitted] = useState(project.showDateSubmitted ?? true);
   const [showTotal, setShowTotal] = useState(project.showTotalSamplesDocuments ?? true);
   const [showRate, setShowRate] = useState(project.showResponseRate ?? true);
   const [totalLabel, setTotalLabel] = useState(project.totalSamplesDocumentsLabel === "Total Documents" ? "Total Documents" : "Total Samples");
+  const [customColumns, setCustomColumns] = useState<CustomColumnDef[]>(() => (project.customTaskColumns as CustomColumnDef[]) || []);
 
   const today = useMemo(() => new Date(), []);
 
@@ -289,6 +304,15 @@ export function MonthlyProjectDetails({ project, canEdit, allPersonnel }: { proj
     setCycles(prev => prev.filter(c => c.id !== cycleId));
   };
 
+  const updateTaskCustomValue = (cycleId: string, taskId: string, customColId: string, value: string | number) => {
+    setCycles(prev => prev.map(c => c.id === cycleId ? { ...c, tasks: c.tasks.map(t => {
+      if (t.id === taskId) {
+        return { ...t, customValues: { ...(t.customValues as CustomValues || {}), [customColId]: value } };
+      }
+      return t;
+    })} : c));
+  };
+
   const updateTaskField = (cycleId: string, taskId: string, field: keyof Task, value: string | number | boolean | Date | null) => {
     setCycles(prev => prev.map(c => c.id === cycleId ? { ...c, tasks: c.tasks.map((t) => t.id === taskId ? { ...t, [field]: value } as Task : t) } : c));
   };
@@ -333,6 +357,8 @@ export function MonthlyProjectDetails({ project, canEdit, allPersonnel }: { proj
     setHasAssistant(!!initialAsst);
     setOtherInvolvedEmployeeIds(initialOthers.length > 0 ? initialOthers : [""]);
     setHasOthers(initialOthers.length > 0);
+    setDescription(project.description || "");
+    setShowDescription(project.showDescription ?? true);
     setShowDeadline(project.showDeadlineSubmission ?? true);
     setShowSubmitted(project.showDateSubmitted ?? true);
     setShowTotal(project.showTotalSamplesDocuments ?? true);
@@ -390,11 +416,14 @@ export function MonthlyProjectDetails({ project, canEdit, allPersonnel }: { proj
       alternateFocalPersonId: alternateFocalPersonId || null,
       assistantFocalPersonId: hasAssistant && assistantFocalPersonId ? assistantFocalPersonId : null,
       otherInvolvedEmployeeIds: hasOthers ? otherInvolvedEmployeeIds.filter(id => id) : [],
+      description,
+      showDescription,
       showDeadlineSubmission: showDeadline,
       showDateSubmitted: showSubmitted,
       showTotalSamplesDocuments: showTotal,
       showResponseRate: showRate,
       totalSamplesDocumentsLabel: totalLabel,
+      customTaskColumns: customColumns,
       cycles: cycles.map(c => ({
         id: c.id,
         cycleName: c.cycleName,
@@ -407,6 +436,7 @@ export function MonthlyProjectDetails({ project, canEdit, allPersonnel }: { proj
           dateSubmitted: t.dateSubmitted ? (t.dateSubmitted instanceof Date ? t.dateSubmitted.toISOString() : new Date(t.dateSubmitted).toISOString()) : null,
           totalSamplesDocuments: t.totalSamplesDocuments ? Number(t.totalSamplesDocuments) : null,
           responseRate: t.responseRate ? Number(t.responseRate) : null,
+          customValues: t.customValues || null,
           manualStatusOverride: null, // Removed manual status override in edit mode
           remarks: t.remarks || null,
           isSubtitle: t.isSubtitle || false,
@@ -435,6 +465,9 @@ export function MonthlyProjectDetails({ project, canEdit, allPersonnel }: { proj
   if (showSubmitted) colConfig += "140px "; // Exact width for date
   if (showTotal) colConfig += "100px "; // Less width
   if (showRate) colConfig += "80px "; // Less width
+  customColumns.forEach(() => {
+    colConfig += "120px ";
+  });
   if (!isEditing) colConfig += "120px "; // Status only visible in View Mode
   colConfig += "2fr auto";
 
@@ -477,8 +510,9 @@ export function MonthlyProjectDetails({ project, canEdit, allPersonnel }: { proj
               </div>
               
               {isEditing ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 bg-slate-50 dark:bg-white/[0.02] p-6 rounded-lg border border-slate-100 dark:border-white/5">
-                  <div className="space-y-4">
+                <div className="flex flex-col gap-6 bg-slate-50 dark:bg-white/[0.02] p-6 rounded-lg border border-slate-100 dark:border-white/5">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div className="space-y-4">
                     <h3 className="font-bold text-sm text-slate-800 dark:text-slate-200 border-b pb-2 dark:border-white/10">Project Settings</h3>
                     
                     <div className="space-y-2">
@@ -517,6 +551,54 @@ export function MonthlyProjectDetails({ project, canEdit, allPersonnel }: { proj
                         <Label className="flex items-center gap-2 cursor-pointer text-sm">
                           <Checkbox checked={showRate} onCheckedChange={(c) => setShowRate(!!c)} /> Rate (%)
                         </Label>
+                      </div>
+                    </div>
+
+                    <div className="space-y-3 pt-2">
+                      <Label className="text-xs">Custom Columns</Label>
+                      <div className="space-y-2">
+                        {customColumns.map((col, idx) => (
+                          <div key={col.id} className="flex gap-2 items-center">
+                            <Input 
+                              value={col.name}
+                              onChange={e => {
+                                const newCols = [...customColumns];
+                                newCols[idx].name = e.target.value;
+                                setCustomColumns(newCols);
+                              }}
+                              className="h-8 text-sm"
+                              placeholder="Column Name"
+                            />
+                            <Select 
+                              value={col.type} 
+                              onChange={e => {
+                                const newCols = [...customColumns];
+                                newCols[idx].type = e.target.value as "text" | "number";
+                                setCustomColumns(newCols);
+                              }} 
+                              className="h-8 text-sm"
+                            >
+                              <option value="text">Text</option>
+                              <option value="number">Number</option>
+                            </Select>
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              onClick={() => setCustomColumns(customColumns.filter((_, i) => i !== idx))} 
+                              className="h-8 w-8 text-red-500 hover:bg-red-50 flex-shrink-0"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        ))}
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={() => setCustomColumns([...customColumns, { id: `custom-col-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`, name: "", type: "text" }])} 
+                          className="text-xs h-8 w-full"
+                        >
+                          + Add Custom Column
+                        </Button>
                       </div>
                     </div>
                   </div>
@@ -581,6 +663,23 @@ export function MonthlyProjectDetails({ project, canEdit, allPersonnel }: { proj
                       )}
                     </div>
                   </div>
+                  </div>
+
+                  {/* Project Description Edit */}
+                  <div className="space-y-3 pt-2">
+                    <div className="flex items-center justify-between border-b pb-2 dark:border-white/10">
+                      <h3 className="font-bold text-sm text-slate-800 dark:text-slate-200">Project Description</h3>
+                      <Label className="flex items-center gap-2 cursor-pointer text-xs font-normal text-slate-600 dark:text-slate-400">
+                        <Checkbox checked={showDescription} onCheckedChange={(c) => setShowDescription(!!c)} /> Show Description
+                      </Label>
+                    </div>
+                    <textarea 
+                      value={description} 
+                      onChange={e => setDescription(e.target.value)} 
+                      placeholder="Enter project description or important information here..."
+                      className="flex min-h-[80px] w-full rounded-md border border-input bg-white dark:bg-slate-900 px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 resize-y"
+                    />
+                  </div>
                 </div>
               ) : (
                 <div className="text-sm text-slate-600 dark:text-slate-400 space-y-1.5 grid grid-cols-1 md:grid-cols-2">
@@ -619,6 +718,16 @@ export function MonthlyProjectDetails({ project, canEdit, allPersonnel }: { proj
           </div>
         </div>
       </div>
+
+
+      {/* Description / Info Box */}
+      {!isEditing && showDescription && description && (
+        <div className="bg-blue-50/50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-800/30 rounded-xl p-5 shadow-sm">
+          <p className="text-sm text-slate-700 dark:text-slate-300 whitespace-pre-wrap leading-relaxed">
+            {description}
+          </p>
+        </div>
+      )}
 
       {/* Monthly Sections */}
       <div className="space-y-4">
@@ -696,11 +805,12 @@ export function MonthlyProjectDetails({ project, canEdit, allPersonnel }: { proj
                       style={{ gridTemplateColumns: colConfig }}
                     >
                       <div>Task / Activity</div>
-                      {showDeadline && <div className="text-center">Deadline</div>}
-                      {showSubmitted && <div className="text-center">Submitted</div>}
-                      {showTotal && <div className="text-center">{totalLabel}</div>}
-                      {showRate && <div className="text-center">Rate (%)</div>}
-                      {!isEditing && <div className="text-center">Status</div>}
+                      {showDeadline && <div className="text-center w-full" style={{ textAlign: "center" }}>Deadline</div>}
+                      {showSubmitted && <div className="text-center w-full" style={{ textAlign: "center" }}>Submitted</div>}
+                      {showTotal && <div className="text-center w-full" style={{ textAlign: "center" }}>{totalLabel}</div>}
+                      {showRate && <div className="text-center w-full" style={{ textAlign: "center" }}>Rate (%)</div>}
+                      {customColumns.map(col => <div key={col.id} className="text-center w-full" style={{ textAlign: "center" }}>{col.name}</div>)}
+                      {!isEditing && <div className="text-center w-full" style={{ textAlign: "center" }}>Status</div>}
                       <div className="text-left">Remarks</div>
                       <div className="w-8"></div>
                     </div>
@@ -757,10 +867,21 @@ export function MonthlyProjectDetails({ project, canEdit, allPersonnel }: { proj
                             {isEditing ? (
                               <>
                                 <Input value={task.taskName} onChange={e => updateTaskField(cycle.id, task.id, "taskName", e.target.value)} className="h-8" />
-                                {showDeadline && <Input type={disabledCols.deadline ? "text" : "date"} value={disabledCols.deadline ? "" : (task.deadline ? format(new Date(task.deadline), "yyyy-MM-dd") : "")} onChange={e => updateTaskField(cycle.id, task.id, "deadline", e.target.value)} disabled={disabledCols.deadline} className="h-8" />}
-                                {showSubmitted && <Input type={disabledCols.submitted ? "text" : "date"} value={disabledCols.submitted ? "" : (task.dateSubmitted ? format(new Date(task.dateSubmitted), "yyyy-MM-dd") : "")} onChange={e => updateTaskField(cycle.id, task.id, "dateSubmitted", e.target.value)} disabled={disabledCols.submitted} className="h-8" />}
-                                {showTotal && <Input type={disabledCols.total ? "text" : "number"} placeholder={disabledCols.total ? "" : "Total"} value={disabledCols.total ? "" : (task.totalSamplesDocuments ?? "")} onChange={e => updateTaskField(cycle.id, task.id, "totalSamplesDocuments", e.target.value)} disabled={disabledCols.total} className="h-8" />}
-                                {showRate && <Input type={disabledCols.rate ? "text" : "number"} step="0.01" placeholder={disabledCols.rate ? "" : "Rate"} value={disabledCols.rate ? "" : (task.responseRate ?? "")} onChange={e => updateTaskField(cycle.id, task.id, "responseRate", e.target.value)} disabled={disabledCols.rate} className="h-8" />}
+                                {showDeadline && <Input type={disabledCols.deadline ? "text" : "date"} value={disabledCols.deadline ? "" : (task.deadline ? format(new Date(task.deadline), "yyyy-MM-dd") : "")} onChange={e => updateTaskField(cycle.id, task.id, "deadline", e.target.value)} disabled={disabledCols.deadline} className="h-8 text-center" />}
+                                {showSubmitted && <Input type={disabledCols.submitted ? "text" : "date"} value={disabledCols.submitted ? "" : (task.dateSubmitted ? format(new Date(task.dateSubmitted), "yyyy-MM-dd") : "")} onChange={e => updateTaskField(cycle.id, task.id, "dateSubmitted", e.target.value)} disabled={disabledCols.submitted} className="h-8 text-center" />}
+                                {showTotal && <Input type={disabledCols.total ? "text" : "number"} placeholder={disabledCols.total ? "" : "Total"} value={disabledCols.total ? "" : (task.totalSamplesDocuments ?? "")} onChange={e => updateTaskField(cycle.id, task.id, "totalSamplesDocuments", e.target.value)} disabled={disabledCols.total} className="h-8 text-center" />}
+                                {showRate && <Input type={disabledCols.rate ? "text" : "number"} step="0.01" placeholder={disabledCols.rate ? "" : "Rate"} value={disabledCols.rate ? "" : (task.responseRate ?? "")} onChange={e => updateTaskField(cycle.id, task.id, "responseRate", e.target.value)} disabled={disabledCols.rate} className="h-8 text-center" />}
+                                {customColumns.map(col => (
+                                  <Input 
+                                    key={col.id} 
+                                    type={disabledCols[col.id] ? "text" : col.type} 
+                                    placeholder={disabledCols[col.id] ? "" : col.name} 
+                                    value={disabledCols[col.id] ? "" : (((task.customValues as CustomValues || {})[col.id]) ?? "")} 
+                                    onChange={e => updateTaskCustomValue(cycle.id, task.id, col.id, e.target.value)} 
+                                    disabled={disabledCols[col.id]} 
+                                    className="h-8 text-center" 
+                                  />
+                                ))}
                                 <Input value={disabledCols.remarks ? "" : (task.remarks || "")} onChange={e => updateTaskField(cycle.id, task.id, "remarks", e.target.value)} disabled={disabledCols.remarks} className="h-8" placeholder={disabledCols.remarks ? "" : "Remarks"} />
                                 <div className="flex items-center">
                                   <Popover>
@@ -777,6 +898,11 @@ export function MonthlyProjectDetails({ project, canEdit, allPersonnel }: { proj
                                           {showSubmitted && <Label className="flex items-center gap-2 cursor-pointer text-xs"><Checkbox checked={!!disabledCols.submitted} onCheckedChange={() => toggleTaskColumn(cycle.id, task.id, "submitted")} /> Submitted</Label>}
                                           {showTotal && <Label className="flex items-center gap-2 cursor-pointer text-xs"><Checkbox checked={!!disabledCols.total} onCheckedChange={() => toggleTaskColumn(cycle.id, task.id, "total")} /> {totalLabel}</Label>}
                                           {showRate && <Label className="flex items-center gap-2 cursor-pointer text-xs"><Checkbox checked={!!disabledCols.rate} onCheckedChange={() => toggleTaskColumn(cycle.id, task.id, "rate")} /> Rate (%)</Label>}
+                                          {customColumns.map(col => (
+                                            <Label key={col.id} className="flex items-center gap-2 cursor-pointer text-xs">
+                                              <Checkbox checked={!!disabledCols[col.id]} onCheckedChange={() => toggleTaskColumn(cycle.id, task.id, col.id)} /> {col.name}
+                                            </Label>
+                                          ))}
                                           <Label className="flex items-center gap-2 cursor-pointer text-xs"><Checkbox checked={!!disabledCols.remarks} onCheckedChange={() => toggleTaskColumn(cycle.id, task.id, "remarks")} /> Remarks</Label>
                                         </div>
                                       </div>
@@ -798,11 +924,16 @@ export function MonthlyProjectDetails({ project, canEdit, allPersonnel }: { proj
                             ) : (
                               <>
                                 <div className="font-medium text-slate-900 dark:text-slate-200 truncate pr-2 pt-1" title={task.taskName}>{task.taskName}</div>
-                                {showDeadline && <div className="text-slate-700 dark:text-slate-300 text-center pt-1">{disabledCols.deadline ? "" : (task.deadline ? format(new Date(task.deadline), "MMM d, yyyy") : "N/A")}</div>}
-                                {showSubmitted && <div className={cn("text-slate-600 dark:text-slate-400 text-center pt-1", !disabledCols.submitted && !disabledCols.deadline && task.dateSubmitted && task.deadline && new Date(task.dateSubmitted) > new Date(task.deadline) ? "text-red-600 dark:text-red-400 font-medium" : "")}>{disabledCols.submitted ? "" : (task.dateSubmitted ? format(new Date(task.dateSubmitted), "MMM d, yyyy") : "N/A")}</div>}
-                                {showTotal && <div className="text-slate-600 dark:text-slate-400 text-center pt-1">{disabledCols.total ? "" : (task.totalSamplesDocuments ?? "-")}</div>}
-                                {showRate && <div className="text-slate-600 dark:text-slate-400 text-center pt-1">{disabledCols.rate ? "" : (task.responseRate !== null && task.responseRate !== undefined ? `${task.responseRate}%` : "-")}</div>}
-                                <div className="text-center pt-1">
+                                {showDeadline && <div className="text-slate-700 dark:text-slate-300 text-center w-full pt-1" style={{ textAlign: "center" }}>{disabledCols.deadline ? "" : (task.deadline ? format(new Date(task.deadline), "MMM d, yyyy") : "N/A")}</div>}
+                                {showSubmitted && <div className={cn("text-slate-600 dark:text-slate-400 text-center w-full pt-1", !disabledCols.submitted && !disabledCols.deadline && task.dateSubmitted && task.deadline && new Date(task.dateSubmitted) > new Date(task.deadline) ? "text-red-600 dark:text-red-400 font-medium" : "")} style={{ textAlign: "center" }}>{disabledCols.submitted ? "" : (task.dateSubmitted ? format(new Date(task.dateSubmitted), "MMM d, yyyy") : "N/A")}</div>}
+                                {showTotal && <div className="text-slate-600 dark:text-slate-400 text-center w-full pt-1" style={{ textAlign: "center" }}>{disabledCols.total ? "" : (task.totalSamplesDocuments ?? "-")}</div>}
+                                {showRate && <div className="text-slate-600 dark:text-slate-400 text-center w-full pt-1" style={{ textAlign: "center" }}>{disabledCols.rate ? "" : (task.responseRate !== null && task.responseRate !== undefined ? `${task.responseRate}%` : "-")}</div>}
+                                {customColumns.map(col => (
+                                  <div key={col.id} className="text-slate-600 dark:text-slate-400 text-center w-full pt-1" style={{ textAlign: "center" }}>
+                                    {disabledCols[col.id] ? "" : (((task.customValues as CustomValues || {})[col.id]) ?? "-")}
+                                  </div>
+                                ))}
+                                <div className="text-center w-full pt-1" style={{ textAlign: "center" }}>
                                   <span className={cn("px-1.5 py-0.5 rounded text-[10px] font-bold leading-none", getBadgeColor(status))}>
                                     {formatLabel(status)}
                                   </span>

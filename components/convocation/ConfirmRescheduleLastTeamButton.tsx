@@ -37,7 +37,7 @@ export function ConfirmRescheduleLastTeamButton() {
           <AlertDialogHeader>
             <AlertDialogTitle>Reschedule Last Team?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will take the most recent convocation program and move it to the upcoming Monday. If it's on the calendar, the event will also be shifted. Are you sure you want to proceed?
+              This will take the most recent convocation program and move it to the upcoming Monday. If it&apos;s on the calendar, the event will also be shifted. Are you sure you want to proceed?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

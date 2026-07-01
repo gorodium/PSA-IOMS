@@ -2,8 +2,10 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, FileText } from "lucide-react";
 import { ConfirmReplaceButton } from "@/components/convocation/ConfirmReplaceButton";
-import { ReplaceMessageSpeakerButton } from "@/components/convocation/ReplaceMessageSpeakerButton";
+import { CustomTextOverrideDialog } from "@/components/convocation/CustomTextOverrideDialog";
+import { ManualEmployeeSelectDialog } from "@/components/convocation/ManualEmployeeSelectDialog";
 import { ConfirmPostponeButton } from "@/components/convocation/ConfirmPostponeButton";
+import { RescheduleConvocationDialog } from "@/components/convocation/RescheduleConvocationDialog";
 import { ConvocationStatusBadge } from "@/components/convocation/ConvocationStatusBadge";
 import {
   deleteUpcomingConvocationProgramAction,
@@ -124,16 +126,16 @@ export default async function ConvocationDetailPage({ params }: ConvocationDetai
           {activePdfTemplate ? (
             <>
               <Button asChild variant="outline">
-                <Link href={`/settings/pdf-templates/${activePdfTemplate.id}/overlay?source=convocation&programId=${program.id}&mode=preview`} target="_blank">
+                <a href={`/settings/pdf-templates/${activePdfTemplate.id}/overlay?source=convocation&programId=${program.id}&mode=preview`} target="_blank" rel="noreferrer">
                   <FileText className="h-4 w-4 mr-2" />
                   View PDF Program
-                </Link>
+                </a>
               </Button>
               <Button asChild>
-                <Link href={`/settings/pdf-templates/${activePdfTemplate.id}/overlay?source=convocation&programId=${program.id}&mode=download`}>
+                <a href={`/settings/pdf-templates/${activePdfTemplate.id}/overlay?source=convocation&programId=${program.id}&mode=download`}>
                   <FileText className="h-4 w-4 mr-2" />
                   Download PDF
-                </Link>
+                </a>
               </Button>
             </>
           ) : (
@@ -151,6 +153,9 @@ export default async function ConvocationDetailPage({ params }: ConvocationDetai
             <form action={postponeConvocationProgramAction.bind(null, program.id)}>
               <ConfirmPostponeButton />
             </form>
+          )}
+          {isAdmin && (
+            <RescheduleConvocationDialog programId={program.id} currentDate={program.convocationDate} />
           )}
           {isAdmin && program.status !== ConvocationProgramStatus.FINALIZED && (
             <form action={deleteUpcomingConvocationProgramAction.bind(null, program.id)}>
@@ -192,19 +197,19 @@ export default async function ConvocationDetailPage({ params }: ConvocationDetai
                       <TableCell>
                         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                           <AssignmentDisplay value={assignment} itemKey={item.itemKey} />
-                          {isAdmin &&
-                            program.status === ConvocationProgramStatus.FINALIZED &&
-                            (item.itemKey === "message" ? (
-                              <ReplaceMessageSpeakerButton itemId={item.id} personnelList={personnelList} />
-                            ) : (
-                              item.assignedPersonnelId &&
-                              item.rotationKey &&
-                              item.countInRotation && (
-                                <form action={overrideFinalizedConvocationAssignmentAction.bind(null, item.id)}>
-                                  <ConfirmReplaceButton />
-                                </form>
-                              )
-                            ))}
+                          {isAdmin && program.status !== ConvocationProgramStatus.COMPLETED && (
+                            <div className="mt-2 flex flex-wrap items-center gap-1 sm:mt-0 sm:justify-end">
+                              {item.assignedPersonnelId &&
+                                item.rotationKey &&
+                                item.countInRotation && (
+                                  <form action={overrideFinalizedConvocationAssignmentAction.bind(null, item.id)}>
+                                    <ConfirmReplaceButton />
+                                  </form>
+                                )}
+                              <ManualEmployeeSelectDialog itemId={item.id} personnelList={personnelList} />
+                              <CustomTextOverrideDialog itemId={item.id} />
+                            </div>
+                          )}
                         </div>
                       </TableCell>
                     </TableRow>

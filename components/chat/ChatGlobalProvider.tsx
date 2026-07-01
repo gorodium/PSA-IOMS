@@ -88,5 +88,9 @@ export function ChatGlobalProvider({ children }: { children: React.ReactNode }) 
 }
 
 export function useChatGlobal() {
-  return useContext(ChatContext);
+  const context = useContext(ChatContext);
+  if (context === undefined) {
+    throw new Error("useChatGlobal must be used within a ChatGlobalProvider");
+  }
+  return context;
 }

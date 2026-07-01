@@ -20,6 +20,7 @@ export function CalendarActivityForm({
   activity?: {
     id?: string;
     type: ActivityType;
+    additionalTypes?: ActivityType[];
     title: string;
     soNumber?: string | null;
     description?: string | null;

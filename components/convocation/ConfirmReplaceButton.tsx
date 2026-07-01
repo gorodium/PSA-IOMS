@@ -29,8 +29,8 @@ export function ConfirmReplaceButton() {
       />
       <AlertDialog>
         <AlertDialogTrigger asChild>
-          <Button type="button" size="sm" variant="outline">
-            Replace
+          <Button type="button" size="sm" variant="outline" className="h-7 px-2 text-xs">
+            Auto
           </Button>
         </AlertDialogTrigger>
         <AlertDialogContent>

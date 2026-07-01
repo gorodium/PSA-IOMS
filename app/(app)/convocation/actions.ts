@@ -468,10 +468,6 @@ export async function overrideFinalizedConvocationAssignmentAction(itemId: strin
     throw new Error("Program assignment could not be found.");
   }
 
-  if (item.program.status !== ConvocationProgramStatus.FINALIZED) {
-    throw new Error("Only finalized convocation programs can use automatic replacement overrides.");
-  }
-
   if (!item.assignedPersonnelId || !item.rotationKey || !item.countInRotation) {
     throw new Error("Only rotating employee assignments can be replaced automatically.");
   }
@@ -668,11 +664,8 @@ export async function finalizeConvocationProgramAction(programId: string): Promi
 
   const missingItems = program.items.filter((item) => {
     if (!item.isEnabled) return false;
-    if (
-      item.assignmentMode === ConvocationAssignmentMode.FIXED ||
-      item.assignmentMode === ConvocationAssignmentMode.CUSTOM
-    ) return !item.fixedTextValue;
-    return !item.assignedPersonnelId;
+    if (item.assignedPersonnelId || item.fixedTextValue) return false;
+    return true;
   });
   if (missingItems.length > 0) {
     throw new Error(`Cannot finalize. Missing assignment for: ${missingItems.map((item) => item.itemLabel).join(", ")}`);
@@ -795,7 +788,7 @@ export async function setDefaultConvocationPdfTemplateAction(_prevState: unknown
   return { ok: true, message: "Default PDF template updated successfully." };
 }
 
-export async function replaceMessageSpeakerAction(itemId: string, personnelId: string): Promise<void> {
+export async function overrideConvocationItemPersonnelAction(itemId: string, personnelId: string): Promise<void> {
   const user = await requireConvocationAdmin();
   
   const item = await db.convocationProgramItem.findUnique({
@@ -824,16 +817,50 @@ export async function replaceMessageSpeakerAction(itemId: string, personnelId: s
         assignedPersonnelId: personnel.id,
         fixedTextValue: textValue,
         assignmentMode: ConvocationAssignmentMode.OVERRIDDEN,
-        overrideReason: `Manual speaker replacement for message.`
+        overrideReason: `Manual personnel replacement.`
       }
     });
 
-    // Mirror to emcee if national_anthem is mirrored? No, message doesn't mirror to emcee, national_anthem does. So no extra mirroring needed.
+    if (item.itemKey === "national_anthem") {
+      await tx.convocationProgramItem.updateMany({
+        where: {
+          programId: item.programId,
+          itemKey: "emcee",
+          assignmentMode: ConvocationAssignmentMode.MIRRORED
+        },
+        data: {
+          assignedPersonnelId: personnel.id,
+          fixedTextValue: textValue
+        }
+      });
+    }
+
+    await tx.convocationAssignmentHistory.deleteMany({
+      where: {
+        programId: item.programId,
+        itemKey: { in: [item.itemKey, item.itemKey === "national_anthem" ? "emcee" : ""] }
+      }
+    });
+
+    if (item.program.status === "FINALIZED" && item.countInRotation) {
+      await tx.convocationAssignmentHistory.create({
+        data: {
+          programId: item.programId,
+          groupId: item.program.groupId,
+          personnelId: personnel.id,
+          itemKey: item.itemKey,
+          rotationKey: item.rotationKey as string,
+          convocationDate: item.program.convocationDate,
+          wasOverride: true,
+          countedInRotation: true
+        }
+      });
+    }
   });
 
   await writeAuditLog({
     userId: user.id,
-    action: "MANUAL_REPLACE_MESSAGE",
+    action: "MANUAL_REPLACE_PERSONNEL",
     entityType: "ConvocationProgramItem",
     entityId: item.id,
     oldValueJson: {
@@ -843,6 +870,73 @@ export async function replaceMessageSpeakerAction(itemId: string, personnelId: s
     newValueJson: {
       assignedPersonnelId: personnel.id,
       fixedTextValue: textValue
+    }
+  });
+
+  revalidatePath("/convocation");
+  revalidatePath(`/convocation/${item.programId}`);
+  revalidatePath(`/convocation/${item.programId}/print`);
+}
+
+export async function overrideConvocationItemCustomTextAction(itemId: string, customText: string): Promise<void> {
+  const user = await requireConvocationAdmin();
+  
+  const item = await db.convocationProgramItem.findUnique({
+    where: { id: itemId },
+    include: { program: true }
+  });
+
+  if (!item) {
+    throw new Error("Program assignment could not be found.");
+  }
+
+  await db.$transaction(async (tx) => {
+    await tx.convocationProgramItem.update({
+      where: { id: item.id },
+      data: {
+        assignedPersonnelId: null,
+        fixedTextValue: customText,
+        assignmentMode: ConvocationAssignmentMode.OVERRIDDEN,
+        overrideReason: `Custom text override.`,
+        countInRotation: false
+      }
+    });
+
+    if (item.itemKey === "national_anthem") {
+      await tx.convocationProgramItem.updateMany({
+        where: {
+          programId: item.programId,
+          itemKey: "emcee",
+          assignmentMode: ConvocationAssignmentMode.MIRRORED
+        },
+        data: {
+          assignedPersonnelId: null,
+          fixedTextValue: customText,
+          countInRotation: false
+        }
+      });
+    }
+
+    await tx.convocationAssignmentHistory.deleteMany({
+      where: {
+        programId: item.programId,
+        itemKey: { in: [item.itemKey, item.itemKey === "national_anthem" ? "emcee" : ""] }
+      }
+    });
+  });
+
+  await writeAuditLog({
+    userId: user.id,
+    action: "MANUAL_REPLACE_CUSTOM_TEXT",
+    entityType: "ConvocationProgramItem",
+    entityId: item.id,
+    oldValueJson: {
+      assignedPersonnelId: item.assignedPersonnelId,
+      fixedTextValue: item.fixedTextValue
+    },
+    newValueJson: {
+      assignedPersonnelId: null,
+      fixedTextValue: customText
     }
   });
 
@@ -912,6 +1006,84 @@ export async function postponeConvocationProgramAction(programId: string): Promi
     entityId: program.id,
     oldValueJson: { convocationDate: program.convocationDate },
     newValueJson: { convocationDate: nextMonday }
+  });
+
+  revalidatePath("/convocation");
+  revalidatePath("/convocation/admin");
+  revalidatePath(`/convocation/${program.id}`);
+  revalidatePath("/calendar");
+  redirect(`/convocation/${program.id}`);
+}
+
+export async function rescheduleConvocationProgramAction(programId: string, formData: FormData): Promise<void> {
+  const user = await requireConvocationAdmin();
+  const program = await db.convocationProgram.findUnique({
+    where: { id: programId },
+    include: {
+      calendarActivity: true,
+    }
+  });
+
+  if (!program) {
+    throw new Error("Convocation program could not be found.");
+  }
+
+  const dateString = formData.get("newDate");
+  if (!dateString || typeof dateString !== "string") {
+    throw new Error("Invalid or missing date.");
+  }
+
+  const newDate = new Date(`${dateString}T00:00:00.000Z`);
+
+  if (isNaN(newDate.getTime())) {
+    throw new Error("Invalid date format.");
+  }
+
+  // Check if a program already exists for the new date
+  const existingProgram = await db.convocationProgram.findUnique({
+    where: { convocationDate: newDate }
+  });
+
+  if (existingProgram) {
+    throw new Error(`A program already exists for ${dateString}. Please archive or delete it first.`);
+  }
+
+  await db.$transaction(async (tx) => {
+    // 1. Update ConvocationProgram date
+    await tx.convocationProgram.update({
+      where: { id: program.id },
+      data: { convocationDate: newDate }
+    });
+
+    // 2. Update ConvocationAssignmentHistory records
+    await tx.convocationAssignmentHistory.updateMany({
+      where: { programId: program.id },
+      data: { convocationDate: newDate }
+    });
+
+    // 3. Update CalendarActivity if it exists
+    if (program.calendarActivityId && program.calendarActivity) {
+      const descriptionSuffix = `\n[Rescheduled from ${program.convocationDate.toISOString().slice(0, 10)}]`;
+      await tx.calendarActivity.update({
+        where: { id: program.calendarActivityId },
+        data: { 
+          startDate: newDate,
+          endDate: newDate,
+          description: program.calendarActivity.description 
+            ? `${program.calendarActivity.description}${descriptionSuffix}` 
+            : descriptionSuffix
+        }
+      });
+    }
+  });
+
+  await writeAuditLog({
+    userId: user.id,
+    action: "RESCHEDULE",
+    entityType: "ConvocationProgram",
+    entityId: program.id,
+    oldValueJson: { convocationDate: program.convocationDate },
+    newValueJson: { convocationDate: newDate }
   });
 
   revalidatePath("/convocation");

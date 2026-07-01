@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useTransition, FormEvent } from "react";
 import { useChatGlobal } from "./ChatGlobalProvider";
-import { getChatSnapshotAction, markChatChannelReadAction, sendChatMessageAction } from "@/app/(app)/chat/actions";
+import { getChatSnapshotAction, markChatChannelReadAction, sendChatMessageAction, type ChatSnapshot } from "@/app/(app)/chat/actions";
 import { X, Minus, Paperclip, Smile, Send, MessageSquare, Hash, ShieldAlert, Bell, Plus, Image as ImageIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -31,7 +31,7 @@ interface TenorGif {
 export function ChatBubble({ channelId, isMinimized }: { channelId: string; isMinimized: boolean }) {
   const { snapshot, closeBubble, toggleBubbleMinimized, refreshChat: globalRefreshChat } = useChatGlobal();
 
-  const [messagesData, setMessagesData] = useState<Record<string, unknown> | null>(null);
+  const [messagesData, setMessagesData] = useState<ChatSnapshot | null>(null);
   const [messageBody, setMessageBody] = useState("");
   const [showEmoticons, setShowEmoticons] = useState(false);
   const [showPlusMenu, setShowPlusMenu] = useState(false);
@@ -42,6 +42,7 @@ export function ChatBubble({ channelId, isMinimized }: { channelId: string; isMi
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [error, setError] = useState("");
   const [dragCounter, setDragCounter] = useState(0);
+  const [replyingTo, setReplyingTo] = useState<ChatSnapshot["messages"][0] | null>(null);
 
   const [isPending, startTransition] = useTransition();
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -152,12 +153,16 @@ export function ChatBubble({ channelId, isMinimized }: { channelId: string; isMi
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
     formData.set("channelId", channelId);
+    if (replyingTo) {
+      formData.set("replyToId", replyingTo.id as string);
+    }
 
     const result = await sendChatMessageAction(formData);
     if (!result.ok) { setError(result.message); return; }
 
     setMessageBody("");
     setSelectedFile(null);
+    setReplyingTo(null);
     if (fileInputRef.current) fileInputRef.current.value = "";
     setError("");
     refreshMessages();
@@ -307,15 +312,16 @@ export function ChatBubble({ channelId, isMinimized }: { channelId: string; isMi
             <p className="text-xs">No messages yet.</p>
           </div>
         ) : (
-          messagesData?.messages?.map((message: Record<string, unknown>) => (
+          messagesData?.messages?.map((message) => (
             <ChatMessageItem
-              key={message.id}
+              key={message.id as string}
               message={message}
               customEmojis={messagesData.customEmojis}
               currentUserId={messagesData.currentUserId}
               currentUserRole={messagesData.currentUserRole}
               selectedChannelId={channelId}
               refreshChat={refreshMessages}
+              onReply={setReplyingTo}
             />
           ))
         )}
@@ -324,6 +330,19 @@ export function ChatBubble({ channelId, isMinimized }: { channelId: string; isMi
       {/* ── Input area ────────────────────────────────────────────────────── */}
       <div className="relative shrink-0 px-2 py-1.5 bg-background border-t">
         <form ref={chatFormRef} onSubmit={handleSend}>
+          {/* Replying Indicator */}
+          {replyingTo && (
+            <div className="mb-1.5 flex items-center justify-between rounded-lg border-l-4 border-l-primary bg-muted/50 px-3 py-2 text-xs">
+              <div className="flex flex-col overflow-hidden pr-2">
+                <span className="font-semibold text-primary">Replying to {replyingTo.senderName}</span>
+                <span className="truncate text-muted-foreground">{replyingTo.isUnsent ? "Unsent message" : replyingTo.body}</span>
+              </div>
+              <button type="button" onClick={() => setReplyingTo(null)} className="text-muted-foreground hover:text-foreground shrink-0 transition-colors">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          )}
+
           {error && (
             <div className="mb-1 rounded bg-destructive/10 px-2 py-1 text-[10px] text-destructive ring-1 ring-destructive/20 truncate">{error}</div>
           )}

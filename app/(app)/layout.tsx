@@ -4,6 +4,7 @@ import { AppSidebar } from "@/components/layout/AppSidebar";
 import { DeferredChatDock } from "@/components/chat/DeferredChatDock";
 import { canManageChatChannels } from "@/lib/chat";
 import { ChatGlobalProvider } from "@/components/chat/ChatGlobalProvider";
+import NextTopLoader from 'nextjs-toploader';
 
 export const dynamic = "force-dynamic";
 
@@ -17,6 +18,7 @@ export default async function ProtectedLayout({
 
   return (
     <ChatGlobalProvider>
+      <NextTopLoader color="#0284c7" showSpinner={false} />
       <div className="min-h-screen bg-background pt-16">
         <AppHeader user={user} />
         <AppSidebar user={user} />

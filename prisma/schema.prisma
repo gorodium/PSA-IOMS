@@ -776,8 +776,11 @@ model ChatMessage {
   relatedEntityId   String?
   metadataJson      Json?
   deletedAt         DateTime?
+  replyToId         String?
   channel           ChatChannel       @relation(fields: [channelId], references: [id], onDelete: Cascade)
   sender            User?             @relation("ChatMessageSender", fields: [senderUserId], references: [id], onDelete: SetNull)
+  replyTo           ChatMessage?      @relation("ChatMessageReplies", fields: [replyToId], references: [id], onDelete: SetNull)
+  replies           ChatMessage[]     @relation("ChatMessageReplies")
   reads             ChatMessageRead[]
   attachments       ChatAttachment[]
   reactions         ChatReaction[]    @relation("ChatMessageReactions")
@@ -789,6 +792,7 @@ model ChatMessage {
   @@index([messageType])
   @@index([relatedEntityType, relatedEntityId])
   @@index([deletedAt])
+  @@index([replyToId])
 }
 
 model ChatAttachment {
@@ -880,6 +884,11 @@ enum MapFurnitureType {
   RECEPTION
   WALL
   PARTITION
+  MEETING_TABLE
+  COUNTER
+  PRINTER_TABLE
+  NETWORK_RACK
+  SHELF
   OTHER
 }
 
@@ -894,6 +903,9 @@ enum NetworkDeviceType {
   SERVER
   IP_PHONE
   CCTV
+  NAS
+  NVR
+  UPS
   OTHER
 }
 
@@ -910,6 +922,9 @@ enum NetworkConnectionType {
   FIBER
   USB
   BLUETOOTH
+  VPN
+  SHARED_PRINTER
+  UNKNOWN
   OTHER
 }
 
