@@ -6,10 +6,11 @@ export const createRoomReservationSchema = z
     roomId: z.string().min(1, "Select a room."),
     reservationType: z.nativeEnum(RoomReservationType),
     startDate: z.string().min(1, "Start date is required."),
-    endDate: z.string().min(1, "End date is required."),
+    endDate: z.string().optional(),
     halfDaySlot: z.nativeEnum(HalfDaySlot).optional(),
     purpose: z.string().trim().min(3, "Purpose of room usage is required."),
-    remarks: z.string().trim().optional()
+    remarks: z.string().trim().optional(),
+    specialOrderId: z.string().trim().optional()
   })
   .superRefine((value, ctx) => {
     if (value.reservationType === RoomReservationType.HALF_DAY && !value.halfDaySlot) {
@@ -20,12 +21,20 @@ export const createRoomReservationSchema = z
       });
     }
 
-    if (value.reservationType === RoomReservationType.HALF_DAY && value.endDate !== value.startDate) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "Half-day reservations must use one reservation date.",
-        path: ["endDate"]
-      });
+    if (value.reservationType === RoomReservationType.MULTIPLE_DAYS) {
+      if (!value.endDate) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "End date is required for multiple-day reservations.",
+          path: ["endDate"]
+        });
+      } else if (value.endDate < value.startDate) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "End date cannot be before the start date.",
+          path: ["endDate"]
+        });
+      }
     }
   });
 

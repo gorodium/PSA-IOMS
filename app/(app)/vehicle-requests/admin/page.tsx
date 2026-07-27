@@ -34,7 +34,7 @@ export default async function VehicleRequestsAdminPage({ searchParams }: Vehicle
       ? params.status as VehicleRequestStatus
       : null;
 
-  const [vehicles, requests] = await Promise.all([
+  const [vehicles, requests, personnel] = await Promise.all([
     db.vehicle.findMany({
       where: { isActive: true },
       orderBy: [{ name: "asc" }, { plateNumber: "asc" }]
@@ -61,6 +61,11 @@ export default async function VehicleRequestsAdminPage({ searchParams }: Vehicle
         }
       },
       orderBy: [{ travelDate: "desc" }, { createdAt: "desc" }]
+    }),
+    db.personnel.findMany({
+      where: { isActive: true },
+      orderBy: { fullName: "asc" },
+      select: { id: true, fullName: true, position: true, section: true }
     })
   ]);
 
@@ -220,8 +225,10 @@ export default async function VehicleRequestsAdminPage({ searchParams }: Vehicle
                           requestId={request.id}
                           status={request.status}
                           assignedVehicleId={request.assignedVehicleId}
+                          assignedDriverId={request.requestedDriverId}
                           soNumber={request.soNumber}
                           vehicles={vehicles}
+                          personnel={personnel}
                         />
                       </TableCell>
                     </TableRow>

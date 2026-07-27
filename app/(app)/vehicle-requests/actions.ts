@@ -29,11 +29,14 @@ type ActionResult = {
 function formValues(formData: FormData) {
   return {
     travelDate: String(formData.get("travelDate") ?? ""),
+    travelEndDate: String(formData.get("travelEndDate") ?? "") || undefined,
     departureTime: String(formData.get("departureTime") ?? ""),
     expectedReturnTime: String(formData.get("expectedReturnTime") ?? ""),
     purpose: String(formData.get("purpose") ?? ""),
     destination: String(formData.get("destination") ?? ""),
-    passengerIds: formData.getAll("passengerIds").map(String).filter(Boolean)
+    passengerIds: formData.getAll("passengerIds").map(String).filter(Boolean),
+    requestedDriverId: String(formData.get("requestedDriverId") ?? "") || undefined,
+    specialOrderId: String(formData.get("specialOrderId") ?? "") || undefined
   };
 }
 
@@ -99,6 +102,7 @@ export async function createVehicleRequestAction(_previousState: ActionResult, f
   }
 
   const travelDate = normalizeTravelDate(parsed.data.travelDate);
+  const travelEndDate = parsed.data.travelEndDate ? normalizeTravelDate(parsed.data.travelEndDate) : null;
   const departureAt = combineTravelDateTime(parsed.data.travelDate, parsed.data.departureTime);
   const expectedReturnAt = combineTravelDateTime(parsed.data.travelDate, parsed.data.expectedReturnTime);
 
@@ -107,10 +111,13 @@ export async function createVehicleRequestAction(_previousState: ActionResult, f
       requesterPersonnelId: user.personnelId,
       requestedByUserId: user.id,
       travelDate,
+      travelEndDate,
       departureAt,
       expectedReturnAt,
       purpose: parsed.data.purpose,
       destination: parsed.data.destination,
+      requestedDriverId: parsed.data.requestedDriverId || null,
+      specialOrderId: parsed.data.specialOrderId || null,
       passengers: {
         create: passengerIds.map((personnelId) => ({ personnelId }))
       }
@@ -140,6 +147,7 @@ export async function manageVehicleRequestAction(_previousState: ActionResult, f
     requestId: String(formData.get("requestId") ?? ""),
     status: String(formData.get("status") ?? ""),
     vehicleId: String(formData.get("vehicleId") ?? "") || undefined,
+    assignedDriverId: String(formData.get("assignedDriverId") ?? "") || undefined,
     soNumber: String(formData.get("soNumber") ?? ""),
     adminNotes: String(formData.get("adminNotes") ?? ""),
     rejectionReason: String(formData.get("rejectionReason") ?? "")
@@ -223,6 +231,7 @@ export async function manageVehicleRequestAction(_previousState: ActionResult, f
     data: {
       status: parsed.data.status,
       assignedVehicleId,
+      requestedDriverId: parsed.data.assignedDriverId || existingRequest.requestedDriverId,
       soNumber: parsed.data.soNumber || null,
       ...(soFileUrl ? { soFileUrl } : {}),
       adminNotes: parsed.data.adminNotes || null,

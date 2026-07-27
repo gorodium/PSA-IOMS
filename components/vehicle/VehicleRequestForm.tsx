@@ -15,6 +15,13 @@ type PersonnelOption = {
   section: string;
 };
 
+type SpecialOrderOption = {
+  id: string;
+  soNumber: string | null;
+  purpose: string | null;
+  activityDate: Date | null;
+};
+
 const initialState = {
   ok: false,
   message: ""
@@ -22,10 +29,12 @@ const initialState = {
 
 export function VehicleRequestForm({
   personnel,
-  requesterPersonnelId
+  requesterPersonnelId,
+  specialOrders
 }: {
   personnel: PersonnelOption[];
   requesterPersonnelId: string;
+  specialOrders: SpecialOrderOption[];
 }) {
   const [state, action, isPending] = useActionState(createVehicleRequestAction, initialState);
   const passengerOptions = personnel.filter((person) => person.id !== requesterPersonnelId);
@@ -38,7 +47,7 @@ export function VehicleRequestForm({
           Request Vehicle Use
         </CardTitle>
         <CardDescription>
-          Submit a travel request for admin review. Vehicles and SO details are assigned by administrators.
+          Submit a travel request for admin review. Vehicles are assigned by administrators.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -49,29 +58,74 @@ export function VehicleRequestForm({
             </div>
           )}
 
-          <div className="grid gap-4 md:grid-cols-3">
+          <div className="grid gap-4 md:grid-cols-2">
             <label className="space-y-2">
-              <span className="text-sm font-medium">Travel date</span>
+              <span className="text-sm font-medium">Start date <span className="text-red-500">*</span></span>
               <Input name="travelDate" type="date" required />
             </label>
             <label className="space-y-2">
+              <span className="text-sm font-medium">End date</span>
+              <Input name="travelEndDate" type="date" />
+              <span className="text-xs text-muted-foreground">Leave blank for single-day travel.</span>
+            </label>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2">
+            <label className="space-y-2">
               <span className="text-sm font-medium">Departure time</span>
-              <Input name="departureTime" type="time" />
+              <Input name="departureTime" type="time" defaultValue="08:00" />
             </label>
             <label className="space-y-2">
               <span className="text-sm font-medium">Expected return time</span>
-              <Input name="expectedReturnTime" type="time" />
+              <Input name="expectedReturnTime" type="time" defaultValue="17:00" />
             </label>
           </div>
 
           <label className="space-y-2 block">
-            <span className="text-sm font-medium">Purpose of travel</span>
+            <span className="text-sm font-medium">Purpose of travel <span className="text-red-500">*</span></span>
             <Textarea name="purpose" required placeholder="State the official purpose of travel." />
           </label>
 
           <label className="space-y-2 block">
-            <span className="text-sm font-medium">Destination</span>
+            <span className="text-sm font-medium">Destination <span className="text-red-500">*</span></span>
             <Input name="destination" required placeholder="City, municipality, barangay, or office destination" />
+          </label>
+
+          <label className="space-y-2 block">
+            <span className="text-sm font-medium">Requested driver</span>
+            <select
+              name="requestedDriverId"
+              className="w-full rounded-md border border-input bg-white px-3 py-2 text-sm text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 dark:bg-slate-900 dark:text-slate-50"
+            >
+              <option value="">No specific driver requested</option>
+              {personnel.map((person) => (
+                <option key={person.id} value={person.id}>
+                  {person.fullName} — {person.position}, {person.section}
+                </option>
+              ))}
+            </select>
+            <span className="text-xs text-muted-foreground">
+              Optional. Administrators may assign a different driver.
+            </span>
+          </label>
+
+          <label className="space-y-2 block">
+            <span className="text-sm font-medium">Associated Special Order</span>
+            <select
+              name="specialOrderId"
+              className="w-full rounded-md border border-input bg-white px-3 py-2 text-sm text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 dark:bg-slate-900 dark:text-slate-50"
+            >
+              <option value="">None</option>
+              {specialOrders.map((so) => (
+                <option key={so.id} value={so.id}>
+                  {so.soNumber ? `SO #${so.soNumber}` : "SO"}{so.purpose ? ` — ${so.purpose}` : ""}
+                  {so.activityDate ? ` (${new Date(so.activityDate).toLocaleDateString()})` : ""}
+                </option>
+              ))}
+            </select>
+            <span className="text-xs text-muted-foreground">
+              Optional. Link this request to an existing Special Order.
+            </span>
           </label>
 
           <label className="space-y-2 block">

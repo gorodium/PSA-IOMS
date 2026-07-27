@@ -9,12 +9,15 @@ const optionalTimeSchema = z
 
 export const createVehicleRequestSchema = z
   .object({
-    travelDate: z.string().min(1, "Travel date is required."),
+    travelDate: z.string().min(1, "Start date is required."),
+    travelEndDate: z.string().trim().optional(),
     departureTime: optionalTimeSchema,
     expectedReturnTime: optionalTimeSchema,
     purpose: z.string().trim().min(3, "Purpose of travel is required."),
     destination: z.string().trim().min(2, "Destination is required."),
-    passengerIds: z.array(z.string()).default([])
+    passengerIds: z.array(z.string()).default([]),
+    requestedDriverId: z.string().trim().optional(),
+    specialOrderId: z.string().trim().optional()
   })
   .superRefine((value, ctx) => {
     if (value.departureTime && value.expectedReturnTime && value.expectedReturnTime <= value.departureTime) {
@@ -24,6 +27,14 @@ export const createVehicleRequestSchema = z
         path: ["expectedReturnTime"]
       });
     }
+
+    if (value.travelEndDate && value.travelEndDate < value.travelDate) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "End date cannot be before the start date.",
+        path: ["travelEndDate"]
+      });
+    }
   });
 
 export const manageVehicleRequestSchema = z
@@ -31,6 +42,7 @@ export const manageVehicleRequestSchema = z
     requestId: z.string().min(1, "Request is required."),
     status: z.nativeEnum(VehicleRequestStatus),
     vehicleId: z.string().optional(),
+    assignedDriverId: z.string().trim().optional(),
     soNumber: z.string().trim().optional(),
     adminNotes: z.string().trim().optional(),
     rejectionReason: z.string().trim().optional()

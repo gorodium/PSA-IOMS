@@ -6,11 +6,10 @@ import { Input } from "@/components/ui/input";
 import { 
   fetchSpecialOrdersPreview, 
   commitSpecialOrders, 
-  type PreviewSO, 
   type SyncResult 
 } from "./actions";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
-import { DownloadCloud, Loader2, AlertTriangle, Users, MapPin, Calendar as CalendarIcon, CheckCircle2, ArrowUpDown, ChevronDown, ChevronUp } from "lucide-react";
+import { DownloadCloud, Loader2, AlertTriangle, Users, MapPin, Calendar as CalendarIcon, CheckCircle2, ChevronDown, ChevronUp } from "lucide-react";
 import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";

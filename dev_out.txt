@@ -1,0 +1,17 @@
+
+> ioms@0.1.0 dev
+> next dev
+
+   ▲ Next.js 15.5.18
+   - Local:        http://localhost:3005
+   - Network:      http://169.254.57.147:3005
+   - Environments: .env.local, .env
+   - Experiments (use with caution):
+     · serverActions
+     · middlewareClientMaxBodySize: "105mb"
+
+ ✓ Starting...
+ ✓ Ready in 3.2s
+ ○ Compiling /_not-found ...
+ ✓ Compiled /_not-found in 6.7s (580 modules)
+ GET /scheduling 404 in 7207ms

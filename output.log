@@ -1,0 +1,17 @@
+
+> ioms@0.1.0 dev
+> next dev
+
+   ▲ Next.js 15.5.18
+   - Local:        http://localhost:3004
+   - Network:      http://169.254.57.147:3004
+   - Environments: .env.local, .env
+   - Experiments (use with caution):
+     · serverActions
+     · middlewareClientMaxBodySize: "105mb"
+
+ ✓ Starting...
+ ✓ Ready in 3.2s
+ ○ Compiling /calendar ...
+ ✓ Compiled /calendar in 13.8s (1530 modules)
+ GET /calendar 200 in 15272ms

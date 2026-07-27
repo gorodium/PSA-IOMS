@@ -52,6 +52,7 @@ export async function getCalendarActivitiesAction(date: Date, view: "day" | "wee
     include: {
       personnel: true,
       involvedPersonnel: true,
+      specialOrders: true,
     },
     orderBy: {
       startDate: "asc"
@@ -96,32 +97,18 @@ export type ActivityPayload = {
   type: ActivityType;
   additionalTypes?: ActivityType[];
   title: string;
-  soNumber?: string | null;
+  specialOrderId?: string | null;
   description?: string | null;
   startDate: string;
   endDate?: string | null;
   location?: string | null;
   personnelId?: string | null;
   involvedPersonnelIds?: string[];
-  soFileBase64?: string | null;
-  soFileName?: string | null;
 };
 
 export async function createCalendarActivityAction(payload: ActivityPayload) {
-  const { type, additionalTypes = [], title, soNumber, description, startDate: startDateStr, endDate: endDateStr, location, personnelId, involvedPersonnelIds = [], soFileBase64, soFileName } = payload;
+  const { type, additionalTypes = [], title, specialOrderId, description, startDate: startDateStr, endDate: endDateStr, location, personnelId, involvedPersonnelIds = [] } = payload;
   
-  let soFileUrl: string | undefined;
-
-  if (soFileBase64 && soFileName) {
-    const base64Data = soFileBase64.replace(/^data:.*,/, "");
-    const buffer = Buffer.from(base64Data, "base64");
-    const fileName = `${Date.now()}-${soFileName.replace(/[^a-zA-Z0-9.-]/g, "_")}`;
-    const uploadDir = path.join(process.cwd(), "public/uploads/so");
-    await mkdir(uploadDir, { recursive: true });
-    await writeFile(path.join(uploadDir, fileName), buffer);
-    soFileUrl = `/uploads/so/${fileName}`;
-  }
-
   const startDate = new Date(startDateStr);
   const endDate = endDateStr ? new Date(endDateStr) : startDate;
 
@@ -130,16 +117,19 @@ export async function createCalendarActivityAction(payload: ActivityPayload) {
       type,
       additionalTypes,
       title,
-      soNumber,
       description,
       startDate,
       endDate,
       location,
       personnelId,
-      soFileUrl,
       involvedPersonnel: {
         connect: involvedPersonnelIds.map(id => ({ id }))
-      }
+      },
+      ...(specialOrderId && {
+        specialOrders: {
+          connect: { id: specialOrderId }
+        }
+      })
     }
   });
 
@@ -147,21 +137,9 @@ export async function createCalendarActivityAction(payload: ActivityPayload) {
 }
 
 export async function updateCalendarActivityAction(payload: ActivityPayload) {
-  const { id, type, additionalTypes = [], title, soNumber, description, startDate: startDateStr, endDate: endDateStr, location, personnelId, involvedPersonnelIds = [], soFileBase64, soFileName } = payload;
+  const { id, type, additionalTypes = [], title, specialOrderId, description, startDate: startDateStr, endDate: endDateStr, location, personnelId, involvedPersonnelIds = [] } = payload;
   
   if (!id) throw new Error("Activity ID is required");
-
-  let soFileUrl: string | undefined;
-
-  if (soFileBase64 && soFileName) {
-    const base64Data = soFileBase64.replace(/^data:.*,/, "");
-    const buffer = Buffer.from(base64Data, "base64");
-    const fileName = `${Date.now()}-${soFileName.replace(/[^a-zA-Z0-9.-]/g, "_")}`;
-    const uploadDir = path.join(process.cwd(), "public/uploads/so");
-    await mkdir(uploadDir, { recursive: true });
-    await writeFile(path.join(uploadDir, fileName), buffer);
-    soFileUrl = `/uploads/so/${fileName}`;
-  }
 
   const startDate = new Date(startDateStr);
   const endDate = endDateStr ? new Date(endDateStr) : startDate;
@@ -172,15 +150,16 @@ export async function updateCalendarActivityAction(payload: ActivityPayload) {
       type,
       additionalTypes,
       title,
-      soNumber,
       description,
       startDate,
       endDate,
       location,
       personnelId,
-      ...(soFileUrl && { soFileUrl }),
       involvedPersonnel: {
         set: involvedPersonnelIds.map(id => ({ id }))
+      },
+      specialOrders: {
+        set: specialOrderId ? [{ id: specialOrderId }] : []
       }
     }
   });

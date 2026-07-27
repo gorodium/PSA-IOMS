@@ -38,10 +38,11 @@ export async function createRoomReservationAction(_previousState: ActionResult, 
     roomId: String(formData.get("roomId") ?? ""),
     reservationType: String(formData.get("reservationType") ?? ""),
     startDate: String(formData.get("startDate") ?? ""),
-    endDate: String(formData.get("endDate") ?? ""),
+    endDate: String(formData.get("endDate") ?? "") || undefined,
     halfDaySlot: String(formData.get("halfDaySlot") ?? "") || undefined,
     purpose: String(formData.get("purpose") ?? ""),
-    remarks: String(formData.get("remarks") ?? "")
+    remarks: String(formData.get("remarks") ?? ""),
+    specialOrderId: String(formData.get("specialOrderId") ?? "") || undefined
   });
 
   if (!parsed.success) {
@@ -67,7 +68,9 @@ export async function createRoomReservationAction(_previousState: ActionResult, 
   }
 
   const startDate = normalizeRoomDate(parsed.data.startDate);
-  const endDate = normalizeRoomDate(parsed.data.endDate);
+  // For single day and half day, end date equals start date
+  const rawEndDate = parsed.data.endDate || parsed.data.startDate;
+  const endDate = normalizeRoomDate(rawEndDate);
   const rangeError = validateRoomDateRange({
     reservationType: parsed.data.reservationType,
     startDate,
@@ -103,7 +106,8 @@ export async function createRoomReservationAction(_previousState: ActionResult, 
       endDate,
       halfDaySlot: parsed.data.reservationType === RoomReservationType.HALF_DAY ? parsed.data.halfDaySlot : null,
       purpose: parsed.data.purpose,
-      remarks: parsed.data.remarks || null
+      remarks: parsed.data.remarks || null,
+      specialOrderId: parsed.data.specialOrderId || null
     }
   });
 

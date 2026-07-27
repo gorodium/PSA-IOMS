@@ -14,6 +14,7 @@ import imageCompression from "browser-image-compression";
 export function CalendarActivityForm({
   activity,
   personnel,
+  specialOrders,
   onClose,
   onSuccess
 }: {
@@ -29,16 +30,19 @@ export function CalendarActivityForm({
     location?: string | null;
     personnelId?: string | null;
     soFileUrl?: string | null;
+    soFileUrl?: string | null;
     involvedPersonnel?: { id: string }[];
+    specialOrders?: { id: string }[];
   };
   personnel: Personnel[];
+  specialOrders?: { id: string; soNumber: string; purpose: string; activityDateString: string | null; activityDate: Date | null }[];
   onClose: () => void;
   onSuccess: () => void;
 }) {
   const [type, setType] = React.useState<ActivityType>(activity?.type || "EVENT");
   const [additionalTypes, setAdditionalTypes] = React.useState<ActivityType[]>(activity?.additionalTypes || []);
   const [title, setTitle] = React.useState(activity?.title || "");
-  const [soNumber, setSoNumber] = React.useState(activity?.soNumber || "");
+  const [specialOrderId, setSpecialOrderId] = React.useState(activity?.specialOrders?.[0]?.id || "");
   const description = activity?.description || "";
   const [location, setLocation] = React.useState(activity?.location || "");
   const [personnelId, setPersonnelId] = React.useState(activity?.personnelId || "");
@@ -55,8 +59,6 @@ export function CalendarActivityForm({
 
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [errorMsg, setErrorMsg] = React.useState<string | null>(null);
-  const [soFile, setSoFile] = React.useState<File | null>(null);
-  const [soFileError, setSoFileError] = React.useState<string | null>(null);
 
   const togglePersonnel = (id: string) => {
     setInvolvedPersonnelIds(prev => 
@@ -64,83 +66,30 @@ export function CalendarActivityForm({
     );
   };
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    setSoFileError(null);
-    if (!file) {
-      setSoFile(null);
-      return;
-    }
-
-    if (file.type === "application/pdf") {
-      if (file.size > 3 * 1024 * 1024) {
-        setSoFileError("PDF file exceeds 3MB limit. Please compress it before uploading.");
-        e.target.value = '';
-        setSoFile(null);
-        return;
-      }
-      setSoFile(file);
-    } else if (file.type.startsWith("image/")) {
-      try {
-        const compressedFile = await imageCompression(file, {
-          maxSizeMB: 3,
-          maxWidthOrHeight: 1920,
-          useWebWorker: true
-        });
-        setSoFile(compressedFile);
-      } catch {
-        setSoFileError("Failed to compress image.");
-        e.target.value = '';
-        setSoFile(null);
-      }
-    } else {
-      setSoFileError("Invalid file type.");
-      e.target.value = '';
-      setSoFile(null);
-    }
-  };
-
-  const fileToBase64 = (file: File): Promise<string> => new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = error => reject(error);
-  });
-
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsSubmitting(true);
     setErrorMsg(null);
 
     let finalTitle = title;
-    if (type === "EVENT" && !title) finalTitle = soNumber ? `Work Event: ${soNumber}` : "Work Event";
-    if (type === "TRAINING" && !title) finalTitle = soNumber ? `Training: ${soNumber}` : "Training";
-    if (type === "TRAVEL" && !title) finalTitle = soNumber ? `Travel: ${soNumber}` : "Employee Travel";
+    if (type === "EVENT" && !title) finalTitle = specialOrderId ? `Work Event` : "Work Event";
+    if (type === "TRAINING" && !title) finalTitle = specialOrderId ? `Training` : "Training";
+    if (type === "TRAVEL" && !title) finalTitle = specialOrderId ? `Travel` : "Employee Travel";
     if (type === "HOLIDAY" && !title) finalTitle = "Holiday";
 
     try {
-      let soFileBase64 = null;
-      let soFileName = null;
-
-      if (soFile) {
-        soFileBase64 = await fileToBase64(soFile);
-        soFileName = soFile.name;
-      }
-
       const payload = {
         id: activity?.id,
         type,
         additionalTypes,
         title: finalTitle,
-        soNumber: soNumber || null,
+        specialOrderId: specialOrderId || null,
         description: description || null,
         startDate,
         endDate: (isMultiDay && endDate) ? endDate : null,
         location: (type === "EVENT" && isOffice) ? "PSA Misamis Oriental" : (location || null),
         personnelId: personnelId || null,
-        involvedPersonnelIds: involvedPersonnelIds.length > 0 ? involvedPersonnelIds : [],
-        soFileBase64,
-        soFileName
+        involvedPersonnelIds: involvedPersonnelIds.length > 0 ? involvedPersonnelIds : []
       };
 
       if (activity?.id) {
@@ -219,29 +168,17 @@ export function CalendarActivityForm({
         )}
 
         {(type === "EVENT" || type === "TRAVEL" || type === "TRAINING") && (
-          <>
-            <div className="space-y-2">
-              <Label>SO Number</Label>
-              <Input value={soNumber} onChange={e => setSoNumber(e.target.value)} placeholder="e.g. SO-2026-001" />
-            </div>
-            <div className="space-y-2">
-              <Label>SO File (Optional)</Label>
-              <div className="text-xs text-slate-500 mb-1">Upload a scanned copy or photo (PDF, JPG, PNG). Images are compressed to under 3MB. Max 3MB for PDF.</div>
-              <Input 
-                type="file" 
-                accept=".pdf, .jpg, .jpeg, .png" 
-                onChange={handleFileChange}
-                disabled={isSubmitting}
-                className="cursor-pointer"
-              />
-              {soFileError && <p className="text-xs text-red-500 mt-1">{soFileError}</p>}
-              {activity?.soFileUrl && !soFile && (
-                <p className="text-xs text-slate-500 mt-1">
-                  Current file: <a href={activity.soFileUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 dark:text-blue-400 hover:underline">View attached file</a>
-                </p>
-              )}
-            </div>
-          </>
+          <div className="space-y-2">
+            <Label>Link Special Order (Optional)</Label>
+            <Select value={specialOrderId} onChange={e => setSpecialOrderId(e.target.value)} className="w-full">
+              <option value="">No linked SO</option>
+              {specialOrders?.map(so => (
+                <option key={so.id} value={so.id}>
+                  {so.soNumber} {so.purpose ? `- ${so.purpose}` : ''}
+                </option>
+              ))}
+            </Select>
+          </div>
         )}
 
         {type === "TRAVEL" && (

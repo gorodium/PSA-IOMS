@@ -217,6 +217,7 @@ model Personnel {
   involvedActivities       CalendarActivity[]             @relation("ActivityInvolvedPersonnel")
   specialOrderInvolvements SpecialOrderPerson[]
   vehicleRequests          VehicleRequest[]               @relation("VehicleRequestRequester")
+  driverRequests           VehicleRequest[]               @relation("VehicleRequestDriver")
   vehicleRequestPassengers VehicleRequestPassenger[]      @relation("VehicleRequestPassengerPersonnel")
   roomReservations         RoomReservation[]              @relation("RoomReservationRequester")
   convocationGroupMembers  ConvocationGroupMember[]
@@ -475,6 +476,8 @@ model SpecialOrder {
   calendarActivity   CalendarActivity?  @relation(fields: [calendarActivityId], references: [id], onDelete: SetNull)
   
   people             SpecialOrderPerson[]
+  vehicleRequests    VehicleRequest[]   @relation("VehicleRequestSpecialOrder")
+  roomReservations   RoomReservation[]  @relation("RoomReservationSpecialOrder")
   
   createdAt          DateTime           @default(now())
   updatedAt          DateTime           @updatedAt
@@ -520,12 +523,15 @@ model VehicleRequest {
   requesterPersonnelId String
   requestedByUserId    String?
   travelDate           DateTime
+  travelEndDate        DateTime?
   departureAt          DateTime?
   expectedReturnAt     DateTime?
   purpose              String
   destination          String
   status               VehicleRequestStatus      @default(PENDING)
   assignedVehicleId    String?
+  requestedDriverId    String?
+  specialOrderId       String?
   soNumber             String?
   soFileUrl            String?
   adminNotes           String?
@@ -536,6 +542,8 @@ model VehicleRequest {
   requestedBy          User?                     @relation("VehicleRequestsCreatedBy", fields: [requestedByUserId], references: [id], onDelete: SetNull)
   reviewedBy           User?                     @relation("VehicleRequestsReviewedBy", fields: [reviewedById], references: [id], onDelete: SetNull)
   assignedVehicle      Vehicle?                  @relation(fields: [assignedVehicleId], references: [id], onDelete: SetNull)
+  requestedDriver      Personnel?                @relation("VehicleRequestDriver", fields: [requestedDriverId], references: [id], onDelete: SetNull)
+  specialOrder         SpecialOrder?             @relation("VehicleRequestSpecialOrder", fields: [specialOrderId], references: [id], onDelete: SetNull)
   calendarActivity     CalendarActivity?         @relation(fields: [calendarActivityId], references: [id], onDelete: SetNull)
   passengers           VehicleRequestPassenger[]
   createdAt            DateTime                  @default(now())
@@ -544,6 +552,7 @@ model VehicleRequest {
   @@index([requesterPersonnelId])
   @@index([requestedByUserId])
   @@index([assignedVehicleId])
+  @@index([requestedDriverId])
   @@index([travelDate])
   @@index([status])
 }
@@ -585,6 +594,7 @@ model RoomReservation {
   halfDaySlot          HalfDaySlot?
   purpose              String
   remarks              String?
+  specialOrderId       String?
   status               RoomReservationStatus @default(PENDING)
   approvedById         String?
   approvedAt           DateTime?
@@ -598,6 +608,7 @@ model RoomReservation {
   requestedBy          User?                 @relation("RoomReservationsCreatedBy", fields: [requestedByUserId], references: [id], onDelete: SetNull)
   approvedBy           User?                 @relation("RoomReservationsApprovedBy", fields: [approvedById], references: [id], onDelete: SetNull)
   rejectedBy           User?                 @relation("RoomReservationsRejectedBy", fields: [rejectedById], references: [id], onDelete: SetNull)
+  specialOrder         SpecialOrder?         @relation("RoomReservationSpecialOrder", fields: [specialOrderId], references: [id], onDelete: SetNull)
   calendarActivity     CalendarActivity?     @relation(fields: [calendarActivityId], references: [id], onDelete: SetNull)
   createdAt            DateTime              @default(now())
   updatedAt            DateTime              @updatedAt
@@ -605,6 +616,7 @@ model RoomReservation {
   @@index([roomId])
   @@index([requesterPersonnelId])
   @@index([requestedByUserId])
+  @@index([specialOrderId])
   @@index([status])
   @@index([startDate])
   @@index([endDate])

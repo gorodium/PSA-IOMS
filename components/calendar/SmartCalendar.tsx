@@ -19,7 +19,7 @@ type ActivityWithRelations = CalendarActivity & {
   vehicleName?: string | null;
 };
 
-export function SmartCalendar({ isAdmin = false, personnel = [] }: { isAdmin?: boolean; personnel?: Personnel[] }) {
+export function SmartCalendar({ isAdmin = false, personnel = [], specialOrders = [] }: { isAdmin?: boolean; personnel?: Personnel[]; specialOrders?: any[] }) {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [view, setView] = useState<"day" | "week" | "month">("week");
   const [filter, setFilter] = useState<FilterType>("ALL");
@@ -515,6 +515,7 @@ export function SmartCalendar({ isAdmin = false, personnel = [] }: { isAdmin?: b
           <CalendarActivityForm 
             activity={editingActivity ?? undefined} 
             personnel={personnel} 
+            specialOrders={specialOrders}
             onClose={closeForm} 
             onSuccess={closeForm} 
           />

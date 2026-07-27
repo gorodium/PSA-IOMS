@@ -33,20 +33,34 @@ function formatVehicleOption(vehicle: VehicleOption) {
   return vehicle.plateNumber ? `${vehicle.name} (${vehicle.plateNumber})` : vehicle.name;
 }
 
+type PersonnelOption = {
+  id: string;
+  fullName: string;
+  position: string;
+  section: string;
+};
+
 export function VehicleAdminRequestForm({
   requestId,
   status,
   assignedVehicleId,
+  assignedDriverId,
   soNumber,
-  vehicles
+  vehicles,
+  personnel
 }: {
   requestId: string;
   status: VehicleRequestStatusValue;
   assignedVehicleId: string | null;
+  assignedDriverId: string | null;
   soNumber: string | null;
   vehicles: VehicleOption[];
+  personnel: PersonnelOption[];
 }) {
   const [state, action, isPending] = useActionState(manageVehicleRequestAction, initialState);
+
+  const drivers = personnel.filter(p => p.position.toLowerCase().includes("driver"));
+  const otherEmployees = personnel.filter(p => !p.position.toLowerCase().includes("driver"));
 
   return (
     <form action={action} className="min-w-[720px] space-y-3">
@@ -56,7 +70,7 @@ export function VehicleAdminRequestForm({
           {state.message}
         </div>
       )}
-      <div className="grid gap-3 md:grid-cols-4">
+      <div className="grid gap-3 md:grid-cols-5">
         <label className="space-y-1">
           <span className="text-xs font-medium text-muted-foreground">Status</span>
           <Select name="status" defaultValue={status}>
@@ -76,6 +90,30 @@ export function VehicleAdminRequestForm({
                 {formatVehicleOption(vehicle)}
               </option>
             ))}
+          </Select>
+        </label>
+        <label className="space-y-1">
+          <span className="text-xs font-medium text-muted-foreground">Assigned driver</span>
+          <Select name="assignedDriverId" defaultValue={assignedDriverId ?? ""}>
+            <option value="">No driver assigned</option>
+            {drivers.length > 0 && (
+              <optgroup label="Drivers">
+                {drivers.map(driver => (
+                  <option key={driver.id} value={driver.id}>
+                    {driver.fullName}
+                  </option>
+                ))}
+              </optgroup>
+            )}
+            {otherEmployees.length > 0 && (
+              <optgroup label="Other Employees">
+                {otherEmployees.map(emp => (
+                  <option key={emp.id} value={emp.id}>
+                    {emp.fullName}
+                  </option>
+                ))}
+              </optgroup>
+            )}
           </Select>
         </label>
         <label className="space-y-1">
