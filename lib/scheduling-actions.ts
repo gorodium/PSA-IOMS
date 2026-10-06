@@ -24,7 +24,7 @@ export async function getSchedulingData(startDate?: Date, endDate?: Date) {
         startDate: { gte: start },
         endDate: { lte: end },
       },
-      include: { room: true, requester: true },
+      include: { room: true, requester: true, requestedBy: { include: { personnel: true } } },
     });
 
     const vehicleRequests = await db.vehicleRequest.findMany({
@@ -32,7 +32,7 @@ export async function getSchedulingData(startDate?: Date, endDate?: Date) {
         departureAt: { gte: start },
         expectedReturnAt: { lte: end },
       },
-      include: { assignedVehicle: true, requester: true },
+      include: { assignedVehicle: true, requester: true, requestedBy: { include: { personnel: true } } },
     });
 
     const specialOrders = await db.specialOrder.findMany({
@@ -127,16 +127,16 @@ export async function quickReserve(data: {
 }) {
     try {
         const user = await db.user.findUnique({ where: { id: data.userId } });
-        if (!user || !user.personnelId) {
+        const isAdmin = user?.role === "ADMIN" || user?.role === "SUPER_ADMIN";
+        const isDirectApprove = isAdmin && data.isAdminAdd;
+
+        if (!user || (!user.personnelId && !(isDirectApprove && data.requesterPersonnelId))) {
             return { success: false, error: "User must be linked to a personnel record to make reservations" };
         }
 
-        const isAdmin = user.role === "ADMIN" || user.role === "SUPER_ADMIN";
-        const isDirectApprove = isAdmin && data.isAdminAdd;
-
         const finalRequesterId = (isDirectApprove && data.requesterPersonnelId) 
             ? data.requesterPersonnelId 
-            : user.personnelId;
+            : user.personnelId!;
 
         if (data.type === 'ROOM') {
             const result = await db.roomReservation.create({
@@ -213,5 +213,46 @@ export async function quickApproveEvent(type: "ROOM" | "VEHICLE", eventId: strin
     } catch (error) {
         console.error("Error quickly approving event:", error);
         return { success: false, error: "Failed to approve event" };
+    }
+}
+
+export async function quickReviewEvent(
+    type: "ROOM" | "VEHICLE",
+    eventId: string,
+    decision: "APPROVE" | "REJECT",
+    reason?: string
+) {
+    try {
+        const user = await db.user.findUnique({ where: { id: (await requireUser()).id } });
+        if (!user || (user.role !== "ADMIN" && user.role !== "SUPER_ADMIN")) {
+            return { success: false, error: "Unauthorized. Only admins can review requests." };
+        }
+        if (decision === "REJECT" && !reason?.trim()) {
+            return { success: false, error: "A reason is required when rejecting." };
+        }
+
+        const id = eventId.replace(/^(room-|vehicle-)/, "");
+        const approve = decision === "APPROVE";
+        const now = new Date();
+
+        if (type === "ROOM") {
+            await db.roomReservation.update({
+                where: { id },
+                data: approve
+                    ? { status: "APPROVED", approvedById: user.id, approvedAt: now, rejectionReason: null }
+                    : { status: "REJECTED", rejectedById: user.id, rejectedAt: now, rejectionReason: reason!.trim() }
+            });
+        } else {
+            await db.vehicleRequest.update({
+                where: { id },
+                data: approve
+                    ? { status: "APPROVED", reviewedById: user.id, rejectionReason: null }
+                    : { status: "REJECTED", reviewedById: user.id, rejectionReason: reason!.trim() }
+            });
+        }
+        return { success: true };
+    } catch (error) {
+        console.error("Error reviewing event:", error);
+        return { success: false, error: "Failed to update request" };
     }
 }

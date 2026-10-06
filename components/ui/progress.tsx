@@ -9,3 +9,5 @@ export function ProgressBar({ value, className }: { value: number; className?: s
     </div>
   );
 }
+
+export { ProgressBar as Progress };

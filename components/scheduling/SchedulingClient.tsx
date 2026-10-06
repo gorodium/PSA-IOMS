@@ -5,7 +5,7 @@ import dynamic from "next/dynamic";
 const SchedulingCalendar = dynamic(() => import("./SchedulingCalendar").then((mod) => mod.SchedulingCalendar), {
   ssr: false,
 });
-import { getSchedulingData, CalendarEvent, quickApproveEvent } from "@/lib/scheduling-actions";
+import { getSchedulingData, CalendarEvent, quickReviewEvent } from "@/lib/scheduling-actions";
 import { QuickReserveDialog, ResourceOption } from "./QuickReserveDialog";
 import {
   AlertDialog,
@@ -45,6 +45,8 @@ export function SchedulingClient({
   const [eventToApprove, setEventToApprove] = useState<CalendarEvent | null>(null);
   const [eventToView, setEventToView] = useState<CalendarEvent | null>(null);
   const [isApproving, setIsApproving] = useState(false);
+  const [rejectMode, setRejectMode] = useState(false);
+  const [rejectReason, setRejectReason] = useState("");
 
   const fetchData = async () => {
     setLoading(true);
@@ -109,35 +111,78 @@ export function SchedulingClient({
         />
       )}
 
-      <AlertDialog open={!!eventToApprove} onOpenChange={(open) => !open && setEventToApprove(null)}>
+      <AlertDialog open={!!eventToApprove} onOpenChange={(open) => { if (!open) { setEventToApprove(null); setRejectMode(false); setRejectReason(""); } }}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Approve Request</AlertDialogTitle>
+            <AlertDialogTitle>Review Request</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to instantly approve this {eventToApprove?.type === "ROOM" ? "room reservation" : "vehicle request"}?
-              This will bypass the standard review queue.
+              Approve or reject this {eventToApprove?.type === "ROOM" ? "room reservation" : "vehicle request"}.
             </AlertDialogDescription>
           </AlertDialogHeader>
+          {rejectMode && (
+            <div className="grid gap-2">
+              <label className="text-sm font-medium">Reason for rejection (required)</label>
+              <textarea
+                className="min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                value={rejectReason}
+                onChange={(e) => setRejectReason(e.target.value)}
+                placeholder="Enter the reason for rejecting this request"
+              />
+            </div>
+          )}
           <AlertDialogFooter>
             <AlertDialogCancel disabled={isApproving}>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              disabled={isApproving}
-              onClick={async (e) => {
-                e.preventDefault();
-                if (!eventToApprove) return;
-                setIsApproving(true);
-                const res = await quickApproveEvent(eventToApprove.type as "ROOM" | "VEHICLE", eventToApprove.id);
-                if (res.success) {
-                  await fetchData();
-                  setEventToApprove(null);
-                } else {
-                  alert("Failed to approve request: " + res.error);
-                }
-                setIsApproving(false);
-              }}
-            >
-              {isApproving ? "Approving..." : "Approve Instantly"}
-            </AlertDialogAction>
+            {!rejectMode ? (
+              <>
+                <AlertDialogAction
+                  disabled={isApproving}
+                  className="bg-red-600 hover:bg-red-700 text-white"
+                  onClick={(e) => { e.preventDefault(); setRejectMode(true); }}
+                >
+                  Reject
+                </AlertDialogAction>
+                <AlertDialogAction
+                  disabled={isApproving}
+                  onClick={async (e) => {
+                    e.preventDefault();
+                    if (!eventToApprove) return;
+                    setIsApproving(true);
+                    const res = await quickReviewEvent(eventToApprove.type as "ROOM" | "VEHICLE", eventToApprove.id, "APPROVE");
+                    if (res.success) {
+                      await fetchData();
+                      setEventToApprove(null);
+                    } else {
+                      alert("Failed to approve request: " + res.error);
+                    }
+                    setIsApproving(false);
+                  }}
+                >
+                  {isApproving ? "Approving..." : "Approve"}
+                </AlertDialogAction>
+              </>
+            ) : (
+              <AlertDialogAction
+                disabled={isApproving || !rejectReason.trim()}
+                className="bg-red-600 hover:bg-red-700 text-white"
+                onClick={async (e) => {
+                  e.preventDefault();
+                  if (!eventToApprove) return;
+                  setIsApproving(true);
+                  const res = await quickReviewEvent(eventToApprove.type as "ROOM" | "VEHICLE", eventToApprove.id, "REJECT", rejectReason);
+                  if (res.success) {
+                    await fetchData();
+                    setEventToApprove(null);
+                    setRejectMode(false);
+                    setRejectReason("");
+                  } else {
+                    alert("Failed to reject request: " + res.error);
+                  }
+                  setIsApproving(false);
+                }}
+              >
+                {isApproving ? "Rejecting..." : "Confirm Reject"}
+              </AlertDialogAction>
+            )}
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -165,8 +210,8 @@ export function SchedulingClient({
                 <span className="font-semibold text-muted-foreground">Resource:</span>
                 <span className="col-span-2">
                   {eventToView.type === "ROOM" 
-                    ? (eventToView.extendedProps.room as any)?.name 
-                    : (eventToView.extendedProps.assignedVehicle as any)?.plateNumber || (eventToView.extendedProps.assignedVehicle as any)?.name || "N/A"}
+                    ? (eventToView.extendedProps.room as { name?: string })?.name 
+                    : (eventToView.extendedProps.assignedVehicle as { plateNumber?: string, name?: string })?.plateNumber || (eventToView.extendedProps.assignedVehicle as { plateNumber?: string, name?: string })?.name || "N/A"}
                 </span>
               </div>
 
@@ -195,8 +240,15 @@ export function SchedulingClient({
 
               <div className="grid grid-cols-3 text-sm">
                 <span className="font-semibold text-muted-foreground">Requester:</span>
-                <span className="col-span-2">{(eventToView.extendedProps.requester as any)?.fullName || (eventToView.extendedProps.requester as any)?.name || "Unknown"}</span>
+                <span className="col-span-2">{(eventToView.extendedProps.requester as { fullName?: string, name?: string })?.fullName || (eventToView.extendedProps.requester as { fullName?: string, name?: string })?.name || "Unknown"}</span>
               </div>
+
+              {eventToView.status === "REJECTED" && (
+                <div className="grid grid-cols-3 text-sm">
+                  <span className="font-semibold text-red-500">Rejection Reason:</span>
+                  <span className="col-span-2">{(eventToView.extendedProps.rejectionReason as string) || "No reason provided"}</span>
+                </div>
+              )}
             </div>
           )}
         </SheetContent>

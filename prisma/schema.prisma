@@ -185,6 +185,18 @@ model User {
   chatReactions            ChatReaction[]       @relation("UserChatReactions")
   createdPdfTemplates      PdfTemplate[]        @relation("PdfTemplateCreatedBy")
   createdNetworkMaps       NetworkMap[]         @relation("NetworkMapCreatedBy")
+  faRubricLocked         FieldAwardRubricVersion[] @relation("FaRubricLockedBy")
+  faRubricPublished      FieldAwardRubricVersion[] @relation("FaRubricPublishedBy")
+  faRubricArchived       FieldAwardRubricVersion[] @relation("FaRubricArchivedBy")
+  faScoresEncoded        FieldAwardScoreEntry[]    @relation("FaScoreEncodedBy")
+  faScoresVerified       FieldAwardScoreEntry[]    @relation("FaScoreVerifiedBy")
+  faScenariosCreated     FieldAwardScenario[]      @relation("FaScenarioCreatedBy")
+  faAssignments          FieldAwardAssignment[]    @relation("FaAssignedBy")
+  faEvidenceUploaded     FieldAwardEvidence[]      @relation("FaEvidenceUploadedBy")
+  faEvidenceVerified     FieldAwardEvidence[]      @relation("FaEvidenceVerifiedBy")
+  faSubmissions          FieldAwardSubmission[]    @relation("FaSubmissionBy")
+  faSnapshotsCaptured    FieldAwardScoreSnapshot[] @relation("FaSnapshotCapturedBy")
+  faAuditLogs            FieldAwardAuditLog[]      @relation("FaAuditUser")
 
   @@index([role])
   @@index([isActive])
@@ -225,6 +237,7 @@ model Personnel {
   convocationHistory       ConvocationAssignmentHistory[]
   employeeSeats            EmployeeSeat[]
   networkDevices           NetworkDevice[]
+  faAssignments          FieldAwardAssignment[]
 
   @@index([section])
   @@index([isActive])
@@ -1060,4 +1073,405 @@ model NetworkConnection {
   @@index([mapId])
   @@index([sourceDeviceId])
   @@index([targetDeviceId])
+}
+
+enum FaNodeType {
+  CATEGORY
+  SUBCATEGORY
+  CRITERION
+  GROUP
+}
+
+enum FaWeightType {
+  ABSOLUTE_OVERALL
+  RELATIVE_LOCAL
+  POINTS_ONLY
+  EXCLUDED_SPECIAL
+}
+
+enum FaFormulaType {
+  POINTS_OVER_MAX
+  MANUAL_PERCENT
+  WEIGHTED_SUM
+  DATE_BAND
+  THRESHOLD_TABLE
+  RATIO_TO_TARGET
+  INVERSE_ERROR_RATE
+  QUARTERLY_AVERAGE
+  PEER_BENCHMARK
+  UPPER_LOWER_LIMIT
+  ADJUSTMENT_FACTOR
+  OFFICIAL_OVERRIDE
+}
+
+enum FaApplicability {
+  INCLUDED
+  NOT_APPLICABLE
+  PENDING_RULE
+  EXCLUDED_SPECIAL
+  NOT_CONFIGURED
+}
+
+enum FaNaPolicy {
+  EXCLUDE_RENORMALIZE
+  EXCLUDE_NO_RENORM
+  TREAT_AS_ZERO
+  AWAIT_DECISION
+}
+
+enum FaCalcStatus {
+  NOT_CONFIGURED
+  DRAFT
+  PROVISIONAL
+  FOR_REVIEW
+  VERIFIED
+  OFFICIAL
+}
+
+enum FaCalcMode {
+  AUTO
+  MANUAL_UNWEIGHTED
+  MANUAL_WEIGHTED
+  OFFICIAL_OVERRIDE
+}
+
+enum FaCycleStatus {
+  ACTIVE
+  LOCKED
+  ARCHIVED
+}
+
+enum FaRubricStatus {
+  DRAFT
+  WORKING
+  PUBLISHED
+  LOCKED
+  ARCHIVED
+}
+
+enum FaEvidenceStatus {
+  PENDING
+  SUBMITTED
+  VERIFIED
+  REJECTED
+  REVISION_NEEDED
+}
+
+enum FaSubmissionChannel {
+  RCNR_REGIONAL
+  DIRECT_SMD
+  GOOGLE_FORM
+  OFFICIAL_EMAIL
+  OPERATIONAL_SYSTEM
+  OTHER
+}
+
+enum FaSubmissionStatus {
+  DRAFT
+  PREPARED
+  FORWARDED_RSSO
+  SUBMITTED_REGIONAL
+  CONFIRMED
+  REVISED
+  OVERDUE
+}
+
+// ── Field Awards Module ──────────────────────────────────────────────────────
+
+model FieldAwardCycle {
+  id             String         @id @default(cuid())
+  year           Int            @unique
+  label          String
+  officeType     String         @default("PSO")
+  officeName     String         @default("PSA Misamis Oriental")
+  status         FaCycleStatus  @default(ACTIVE)
+  isActive       Boolean        @default(true)
+  notes          String?
+  rubricVersions FieldAwardRubricVersion[]
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  @@index([year])
+  @@index([status])
+}
+
+model FieldAwardRubricVersion {
+  id              String          @id @default(cuid())
+  cycleId         String
+  versionName     String
+  versionNumber   Int             @default(1)
+  status          FaRubricStatus  @default(DRAFT)
+  isBaseline      Boolean         @default(false)
+  isWorking       Boolean         @default(false)
+  lockedAt        DateTime?
+  lockedById      String?
+  publishedAt     DateTime?
+  publishedById   String?
+  archivedAt      DateTime?
+  archivedById    String?
+  clonedFromId    String?
+  notes           String?
+  sourceTitle     String?
+  sourceUrl       String?
+  sourceVersion   String?
+  effectiveDate   DateTime?
+  cycle           FieldAwardCycle  @relation(fields: [cycleId], references: [id], onDelete: Cascade)
+  lockedBy        User?           @relation("FaRubricLockedBy", fields: [lockedById], references: [id], onDelete: SetNull)
+  publishedBy     User?           @relation("FaRubricPublishedBy", fields: [publishedById], references: [id], onDelete: SetNull)
+  archivedBy      User?           @relation("FaRubricArchivedBy", fields: [archivedById], references: [id], onDelete: SetNull)
+  clonedFrom      FieldAwardRubricVersion? @relation("FaRubricClones", fields: [clonedFromId], references: [id], onDelete: SetNull)
+  clones          FieldAwardRubricVersion[] @relation("FaRubricClones")
+  nodes           FieldAwardNode[]
+  scenarios       FieldAwardScenario[]
+  snapshots       FieldAwardScoreSnapshot[]
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  @@unique([cycleId, versionName])
+  @@index([cycleId])
+  @@index([status])
+  @@index([isBaseline])
+}
+
+model FieldAwardNode {
+  id                   String          @id @default(cuid())
+  rubricVersionId      String
+  parentId             String?
+  code                 String
+  title                String
+  description          String?
+  displayOrder         Int             @default(0)
+  nodeType             FaNodeType      @default(CRITERION)
+  weightType           FaWeightType    @default(RELATIVE_LOCAL)
+  officialWeight       Decimal?        @db.Decimal(10, 5)
+  localWeight          Decimal?        @db.Decimal(10, 5)
+  workingWeight        Decimal?        @db.Decimal(10, 5)
+  maximumPoints        Decimal?        @db.Decimal(10, 5)
+  formulaType          FaFormulaType   @default(WEIGHTED_SUM)
+  formulaConfig        Json?
+  applicability        FaApplicability @default(INCLUDED)
+  naPolicy             FaNaPolicy      @default(AWAIT_DECISION)
+  excludedFromOverall  Boolean         @default(false)
+  isPendingRule        Boolean         @default(false)
+  pendingRuleNote      String?
+  activationDate       DateTime?
+  sourceTitle          String?
+  sourceUrl            String?
+  sourcePage           String?
+  sourceEffectiveDate  DateTime?
+  verificationStatus   FaCalcStatus    @default(NOT_CONFIGURED)
+  calcMode             FaCalcMode      @default(AUTO)
+  rubricVersion        FieldAwardRubricVersion @relation(fields: [rubricVersionId], references: [id], onDelete: Cascade)
+  parent               FieldAwardNode? @relation("NodeChildren", fields: [parentId], references: [id], onDelete: SetNull)
+  children             FieldAwardNode[] @relation("NodeChildren")
+  requirements         FieldAwardRequirement[]
+  scoreEntries         FieldAwardScoreEntry[]
+  assignments          FieldAwardAssignment[]
+  createdAt            DateTime        @default(now())
+  updatedAt            DateTime        @updatedAt
+
+  @@unique([rubricVersionId, code])
+  @@index([rubricVersionId])
+  @@index([parentId])
+  @@index([nodeType])
+  @@index([applicability])
+  @@index([displayOrder])
+}
+
+model FieldAwardRequirement {
+  id               String             @id @default(cuid())
+  nodeId           String
+  code             String?
+  title            String
+  description      String?
+  isRequired       Boolean            @default(true)
+  isPdf            Boolean            @default(false)
+  isInfoSheet      Boolean            @default(false)
+  referenceMonth   Int?
+  dueDate          DateTime?
+  submissionChannel FaSubmissionChannel @default(DIRECT_SMD)
+  namingConvention String?
+  notes            String?
+  node             FieldAwardNode     @relation(fields: [nodeId], references: [id], onDelete: Cascade)
+  evidence         FieldAwardEvidence[]
+  submissions      FieldAwardSubmission[]
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+
+  @@index([nodeId])
+  @@index([dueDate])
+}
+
+model FieldAwardScoreEntry {
+  id                      String       @id @default(cuid())
+  nodeId                  String
+  cycleId                 String
+  rawPoints               Decimal?     @db.Decimal(10, 5)
+  maximumPoints           Decimal?     @db.Decimal(10, 5)
+  computedUnweightedRating Decimal?    @db.Decimal(10, 5)
+  manualUnweightedOverride Decimal?    @db.Decimal(10, 5)
+  computedWeightedContrib Decimal?     @db.Decimal(10, 5)
+  officialWeightedOverride Decimal?    @db.Decimal(10, 5)
+  officialWeight          Decimal?     @db.Decimal(10, 5)
+  workingWeight           Decimal?     @db.Decimal(10, 5)
+  effectiveUnweighted     Decimal?     @db.Decimal(10, 5)
+  effectiveWeighted       Decimal?     @db.Decimal(10, 5)
+  completionProgress      Decimal?     @db.Decimal(10, 5)
+  calcStatus              FaCalcStatus @default(NOT_CONFIGURED)
+  calcMode                FaCalcMode   @default(AUTO)
+  peerDivisor             Decimal?     @db.Decimal(10, 5)
+  peerDivisorNote         String?
+  overrideReason          String?
+  overrideSourceDoc       String?
+  benchmarkNote           String?
+  notes                   String?
+  encodedById             String?
+  verifiedById            String?
+  verifiedAt              DateTime?
+  encodedBy               User?        @relation("FaScoreEncodedBy", fields: [encodedById], references: [id], onDelete: SetNull)
+  verifiedBy              User?        @relation("FaScoreVerifiedBy", fields: [verifiedById], references: [id], onDelete: SetNull)
+  node                    FieldAwardNode @relation(fields: [nodeId], references: [id], onDelete: Cascade)
+  createdAt               DateTime     @default(now())
+  updatedAt               DateTime     @updatedAt
+
+  @@unique([nodeId, cycleId])
+  @@index([cycleId])
+  @@index([calcStatus])
+  @@index([calcMode])
+}
+
+model FieldAwardScenario {
+  id              String          @id @default(cuid())
+  rubricVersionId String
+  name            String
+  description     String?
+  isActive        Boolean         @default(true)
+  scoreOverrides  Json?
+  weightOverrides Json?
+  rubricVersion   FieldAwardRubricVersion @relation(fields: [rubricVersionId], references: [id], onDelete: Cascade)
+  createdById     String?
+  createdBy       User?           @relation("FaScenarioCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  @@index([rubricVersionId])
+}
+
+model FieldAwardAssignment {
+  id              String    @id @default(cuid())
+  nodeId          String
+  personnelId     String
+  role            String    @default("FOCAL")
+  isActive        Boolean   @default(true)
+  node            FieldAwardNode @relation(fields: [nodeId], references: [id], onDelete: Cascade)
+  personnel       Personnel @relation(fields: [personnelId], references: [id], onDelete: Cascade)
+  assignedById    String?
+  assignedBy      User?     @relation("FaAssignedBy", fields: [assignedById], references: [id], onDelete: SetNull)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@unique([nodeId, personnelId, role])
+  @@index([nodeId])
+  @@index([personnelId])
+}
+
+model FieldAwardEvidence {
+  id              String             @id @default(cuid())
+  requirementId   String
+  title           String
+  description     String?
+  fileUrl         String?
+  externalUrl     String?
+  mimeType        String?
+  fileSize        Int?
+  status          FaEvidenceStatus   @default(PENDING)
+  referenceMonth  Int?
+  referenceYear   Int?
+  reviewerNotes   String?
+  rejectionReason String?
+  uploadedById    String?
+  verifiedById    String?
+  verifiedAt      DateTime?
+  requirement     FieldAwardRequirement @relation(fields: [requirementId], references: [id], onDelete: Cascade)
+  uploadedBy      User?              @relation("FaEvidenceUploadedBy", fields: [uploadedById], references: [id], onDelete: SetNull)
+  verifiedBy      User?              @relation("FaEvidenceVerifiedBy", fields: [verifiedById], references: [id], onDelete: SetNull)
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+
+  @@index([requirementId])
+  @@index([status])
+  @@index([uploadedById])
+}
+
+model FieldAwardSubmission {
+  id               String               @id @default(cuid())
+  requirementId    String
+  channel          FaSubmissionChannel  @default(DIRECT_SMD)
+  status           FaSubmissionStatus   @default(DRAFT)
+  referenceMonth   Int?
+  referenceYear    Int?
+  dueDate          DateTime?
+  preparedAt       DateTime?
+  forwardedRssoAt  DateTime?
+  submittedAt      DateTime?
+  confirmedAt      DateTime?
+  confirmationRef  String?
+  revisionOf       String?
+  isPdf            Boolean              @default(false)
+  isInfoSheet      Boolean              @default(false)
+  isLatestBeforeDeadline Boolean        @default(false)
+  notes            String?
+  requirement      FieldAwardRequirement @relation(fields: [requirementId], references: [id], onDelete: Cascade)
+  submittedById    String?
+  submittedBy      User?                @relation("FaSubmissionBy", fields: [submittedById], references: [id], onDelete: SetNull)
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+
+  @@index([requirementId])
+  @@index([status])
+  @@index([dueDate])
+  @@index([referenceMonth, referenceYear])
+}
+
+model FieldAwardScoreSnapshot {
+  id              String    @id @default(cuid())
+  rubricVersionId String
+  cycleId         String
+  snapshotLabel   String
+  isOfficial      Boolean   @default(false)
+  snapshotData    Json
+  overallWeighted Decimal?  @db.Decimal(10, 5)
+  rank            Int?
+  notes           String?
+  capturedById    String?
+  rubricVersion   FieldAwardRubricVersion @relation(fields: [rubricVersionId], references: [id], onDelete: Cascade)
+  capturedBy      User?     @relation("FaSnapshotCapturedBy", fields: [capturedById], references: [id], onDelete: SetNull)
+  createdAt       DateTime  @default(now())
+
+  @@index([rubricVersionId])
+  @@index([cycleId])
+  @@index([isOfficial])
+}
+
+model FieldAwardAuditLog {
+  id              String    @id @default(cuid())
+  userId          String?
+  action          String
+  entityType      String
+  entityId        String
+  fieldChanged    String?
+  oldValueJson    Json?
+  newValueJson    Json?
+  reason          String?
+  sourceDocument  String?
+  rubricVersionId String?
+  cycleId         String?
+  ipAddress       String?
+  user            User?     @relation("FaAuditUser", fields: [userId], references: [id], onDelete: SetNull)
+  createdAt       DateTime  @default(now())
+
+  @@index([entityType, entityId])
+  @@index([userId])
+  @@index([createdAt])
+  @@index([rubricVersionId])
 }

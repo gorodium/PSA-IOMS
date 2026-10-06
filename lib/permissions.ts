@@ -15,7 +15,8 @@ export type PermissionResource =
   | "vehicleRequest"
   | "roomReservation"
   | "convocation"
-  | "adminReports";
+  | "adminReports"
+  | "fieldAwards";
 
 export type PermissionUser = {
   role: UserRole;
@@ -35,7 +36,8 @@ const permissions: Record<Exclude<UserRole, "SUPER_ADMIN">, Partial<Record<Permi
     user: ["view"],
     vehicleRequest: ["view", "create", "update", "manage"],
     roomReservation: ["view", "create", "update", "manage"],
-    convocation: ["view", "create", "update", "manage"]
+    convocation: ["view", "create", "update", "manage"],
+    fieldAwards: ["view", "create", "update", "manage"]
   },
   SUPERVISOR: {
     dashboard: ["view"],
@@ -45,7 +47,8 @@ const permissions: Record<Exclude<UserRole, "SUPER_ADMIN">, Partial<Record<Permi
     remark: ["view", "create", "comment"],
     vehicleRequest: ["view", "create"],
     roomReservation: ["view", "create"],
-    convocation: ["view"]
+    convocation: ["view"],
+    fieldAwards: ["view", "create", "update"]
   },
   EMPLOYEE: {
     dashboard: ["view"],
@@ -55,7 +58,8 @@ const permissions: Record<Exclude<UserRole, "SUPER_ADMIN">, Partial<Record<Permi
     remark: ["view", "create", "comment"],
     vehicleRequest: ["view", "create"],
     roomReservation: ["view", "create"],
-    convocation: ["view"]
+    convocation: ["view"],
+    fieldAwards: ["view", "create"]
   },
   VIEWER: {
     dashboard: ["view"],
@@ -63,7 +67,8 @@ const permissions: Record<Exclude<UserRole, "SUPER_ADMIN">, Partial<Record<Permi
     personnel: ["view"],
     task: ["view"],
     remark: ["view"],
-    convocation: ["view"]
+    convocation: ["view"],
+    fieldAwards: ["view"]
   }
 };
 

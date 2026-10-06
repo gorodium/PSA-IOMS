@@ -30,7 +30,6 @@ export function CalendarActivityForm({
     location?: string | null;
     personnelId?: string | null;
     soFileUrl?: string | null;
-    soFileUrl?: string | null;
     involvedPersonnel?: { id: string }[];
     specialOrders?: { id: string }[];
   };

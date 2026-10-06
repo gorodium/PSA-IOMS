@@ -15,7 +15,8 @@ import {
   Users,
   ActivitySquare,
   Map,
-  Cpu
+  Cpu,
+  Trophy
 } from "lucide-react";
 import type { AuthUser } from "@/lib/auth";
 import { checkUserPermission } from "@/lib/permissions";
@@ -26,7 +27,7 @@ type NavItem = {
   href: string;
   icon: React.ElementType;
   basePath?: string;
-  resource?: "vehicleRequest" | "roomReservation" | "settings" | "adminReports";
+  resource?: "vehicleRequest" | "roomReservation" | "settings" | "adminReports" | "fieldAwards";
 };
 
 type NavGroup = {
@@ -75,6 +76,12 @@ export const navigationGroups: NavGroup[] = [
     label: "ICT Management",
     items: [
       { name: "ICT Infrastructure Map", href: "/ict-management/infrastructure-map", icon: Map }
+    ]
+  },
+  {
+    label: "Performance",
+    items: [
+      { name: "Field Awards", href: "/field-awards", icon: Trophy, resource: "fieldAwards" }
     ]
   },
   {

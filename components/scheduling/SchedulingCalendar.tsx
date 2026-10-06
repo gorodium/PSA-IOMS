@@ -25,7 +25,16 @@ const EventTooltip = ({
   bgColor, 
   textColor, 
   timeText 
-}: any) => {
+}: { 
+  event: { title: string; start: Date | null; end: Date | null }; 
+  requester: string; 
+  resourceName: string; 
+  status: string; 
+  statusText: string; 
+  bgColor: string; 
+  textColor: string; 
+  timeText: string; 
+}) => {
   return (
     <Tooltip>
       <TooltipTrigger asChild>
@@ -68,7 +77,16 @@ export function SchedulingCalendar({ events, onDateClick, onEventClick }: Schedu
     const { event } = eventInfo;
     const status = event.extendedProps.status;
     const type = event.extendedProps.type;
-    const requester = (event.extendedProps.requester as any)?.fullName || (event.extendedProps.requester as any)?.name || "Unknown";
+    const innerProps = event.extendedProps.extendedProps || event.extendedProps;
+    let requesterName = (innerProps.requester as { fullName?: string, name?: string })?.fullName || 
+                        (innerProps.requester as { fullName?: string, name?: string })?.name;
+
+    // Fallback if super admin creates it without selecting an employee (though form usually requires it)
+    if (!requesterName && innerProps.requestedBy) {
+        requesterName = (innerProps.requestedBy as any)?.personnel?.fullName || "Super Admin";
+    }
+
+    const requester = requesterName || "Unknown";
     
     // Parse title to extract resource name (e.g. "Room: Conference" -> "Conference")
     const titleParts = event.title.split(": ");
@@ -148,7 +166,7 @@ export function SchedulingCalendar({ events, onDateClick, onEventClick }: Schedu
         headerToolbar={{
           left: "prev,next today",
           center: "title",
-          right: "dayGridMonth,timeGridWeek,timeGridDay",
+          right: "",
         }}
         events={events.map((e) => ({
           id: e.id,
@@ -158,14 +176,14 @@ export function SchedulingCalendar({ events, onDateClick, onEventClick }: Schedu
           extendedProps: e,
         }))}
         eventContent={renderEventContent}
-        dateClick={(arg: any) => onDateClick(arg.date)}
-        eventClick={(arg: any) => onEventClick(arg.event.extendedProps as CalendarEvent)}
+        dateClick={(arg: { date: Date }) => onDateClick(arg.date)}
+        eventClick={(arg: { event: { extendedProps: unknown } }) => onEventClick(arg.event.extendedProps as CalendarEvent)}
         height="100%"
         editable={true}
         selectable={true}
         dayMaxEvents={3} // Stack "+X More" if more than 3
         moreLinkClassNames="text-xs font-semibold text-blue-600 dark:text-blue-400 cursor-pointer hover:underline p-1"
-        dayCellDidMount={(info: any) => {
+        dayCellDidMount={(info: { date: Date; el: HTMLElement }) => {
           // Calculate events per day to apply occupancy shading
           const dateStr = format(info.date, "yyyy-MM-dd");
           const dayEvents = events.filter(e => 
@@ -180,11 +198,11 @@ export function SchedulingCalendar({ events, onDateClick, onEventClick }: Schedu
             info.el.style.backgroundColor = "rgba(16, 185, 129, 0.03)"; // Very light emerald for some occupancy
           }
         }}
-        eventDrop={(info: any) => {
+        eventDrop={(info: { event: { start: Date | null } }) => {
             console.log("Event dropped", info.event.start);
             // Implement drag and drop update logic here
         }}
-        eventResize={(info: any) => {
+        eventResize={(info: { event: { end: Date | null } }) => {
             console.log("Event resized", info.event.end);
             // Implement resize logic here
         }}

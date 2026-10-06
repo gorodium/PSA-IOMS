@@ -62,8 +62,8 @@ export default async function RoomReservationsPage() {
   ] = await Promise.all([
     db.roomReservation.count({
       where: {
-        startDate: { gte: startOfYear },
-        endDate: { lte: endOfYear }
+        startDate: { lte: endOfYear },
+        endDate: { gte: startOfYear }
       }
     }),
     db.roomReservation.count({
@@ -105,16 +105,29 @@ export default async function RoomReservationsPage() {
           </p>
         </div>
         {isAdmin && (
-          <Button asChild variant="outline">
-            <Link href="/room-reservations/admin">
-              <ShieldCheck className="h-4 w-4" />
-              Admin Management
-            </Link>
-          </Button>
+          <div className="flex gap-2">
+            <Button asChild variant="outline">
+              <Link href="/room-reservations/archive">
+                Archive
+              </Link>
+            </Button>
+            <Button asChild variant="outline">
+              <Link href="/room-reservations/admin">
+                <ShieldCheck className="h-4 w-4" />
+                Admin Management
+              </Link>
+            </Button>
+          </div>
         )}
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+        <Card className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800">
+          <CardHeader className="pb-2">
+            <CardDescription className="font-medium">Total Reservations This Year</CardDescription>
+            <CardTitle className="text-3xl">{yearlyReservations}</CardTitle>
+          </CardHeader>
+        </Card>
         <Card className="bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800">
           <CardHeader className="pb-2">
             <CardDescription className="text-emerald-800 dark:text-emerald-400 font-medium">Rooms Available</CardDescription>
@@ -125,12 +138,6 @@ export default async function RoomReservationsPage() {
           <CardHeader className="pb-2">
             <CardDescription className="font-medium">Rooms Occupied</CardDescription>
             <CardTitle className="text-3xl">{roomsOccupiedCount}</CardTitle>
-          </CardHeader>
-        </Card>
-        <Card className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800">
-          <CardHeader className="pb-2">
-            <CardDescription className="font-medium">Yearly Reservations</CardDescription>
-            <CardTitle className="text-3xl">{yearlyReservations}</CardTitle>
           </CardHeader>
         </Card>
         <Card className="bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800">

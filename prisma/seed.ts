@@ -1,6 +1,7 @@
 import { PrismaClient, ProjectCategory, ProjectFrequency, ProjectPriority, type TaskStatus } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { calculateProjectCycleStatus, calculateProjectProgress } from "../lib/status";
+import { seedFieldAwards } from "./seed-field-awards";
 
 const prisma = new PrismaClient();
 
@@ -596,6 +597,10 @@ async function main() {
       entityId: "phase-1"
     }
   });
+
+  // Field Awards module seed
+  console.log("Seeding Field Awards module...");
+  await seedFieldAwards(prisma);
 }
 
 main()
