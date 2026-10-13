@@ -8,12 +8,14 @@ import { CalendarEvent } from "@/lib/scheduling-actions";
 import { EventContentArg } from "@fullcalendar/core";
 import { format } from "date-fns";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Trash2 } from "lucide-react";
 
 
 interface SchedulingCalendarProps {
   events: CalendarEvent[];
   onDateClick: (date: Date) => void;
   onEventClick: (event: CalendarEvent) => void;
+  onDeleteClick?: (event: CalendarEvent) => void;
 }
 
 const EventTooltip = ({ 
@@ -24,7 +26,8 @@ const EventTooltip = ({
   statusText, 
   bgColor, 
   textColor, 
-  timeText 
+  timeText,
+  onDelete
 }: { 
   event: { title: string; start: Date | null; end: Date | null }; 
   requester: string; 
@@ -34,14 +37,32 @@ const EventTooltip = ({
   bgColor: string; 
   textColor: string; 
   timeText: string; 
+  onDelete?: () => void;
 }) => {
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <div className={`p-1.5 rounded-md text-[11px] leading-tight w-full h-full ${bgColor} ${textColor} border-0 transition-all hover:brightness-110 shadow-sm flex flex-col gap-0.5`}>
-          <div className="flex justify-between items-start">
-            <span className="font-bold truncate">{resourceName}</span>
-            {timeText && <span className="font-semibold opacity-90">{timeText}</span>}
+        <div className={`p-1.5 rounded-md text-[11px] leading-tight w-full h-full ${bgColor} ${textColor} border-0 transition-all hover:brightness-110 shadow-sm flex flex-col gap-0.5 relative group`}>
+          <div className="flex justify-between items-start gap-1">
+            <span className="font-bold truncate flex-1">{resourceName}</span>
+            <div className="flex items-center gap-1 shrink-0">
+              {timeText && <span className="font-semibold opacity-90">{timeText}</span>}
+              {onDelete && (
+                <button
+                  type="button"
+                  title="Delete schedule"
+                  aria-label="Delete schedule"
+                  className="rounded p-0.5 bg-black/25 hover:bg-red-600 text-white transition-all opacity-80 hover:opacity-100 flex items-center justify-center cursor-pointer"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    onDelete();
+                  }}
+                >
+                  <Trash2 className="h-3 w-3" />
+                </button>
+              )}
+            </div>
           </div>
           <div className="truncate opacity-90">{requester}</div>
         </div>
@@ -66,12 +87,28 @@ const EventTooltip = ({
             {statusText}
           </span>
         </div>
+        {onDelete && (
+          <div className="pt-2 mt-1 border-t flex justify-end">
+            <button
+              type="button"
+              className="text-xs text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300 font-medium flex items-center gap-1 hover:underline cursor-pointer"
+              onClick={(e) => {
+                e.stopPropagation();
+                e.preventDefault();
+                onDelete();
+              }}
+            >
+              <Trash2 className="h-3 w-3" />
+              Delete schedule
+            </button>
+          </div>
+        )}
       </TooltipContent>
     </Tooltip>
   );
 };
 
-export function SchedulingCalendar({ events, onDateClick, onEventClick }: SchedulingCalendarProps) {
+export function SchedulingCalendar({ events, onDateClick, onEventClick, onDeleteClick }: SchedulingCalendarProps) {
 
   const renderEventContent = (eventInfo: EventContentArg) => {
     const { event } = eventInfo;
@@ -111,6 +148,11 @@ export function SchedulingCalendar({ events, onDateClick, onEventClick }: Schedu
        statusText = "Special Order";
     }
 
+    const canDelete = Boolean(onDeleteClick && (type === "ROOM" || type === "VEHICLE"));
+    const handleDelete = canDelete
+      ? () => onDeleteClick?.(eventInfo.event.extendedProps as CalendarEvent)
+      : undefined;
+
     return (
       <EventTooltip 
         event={event}
@@ -121,6 +163,7 @@ export function SchedulingCalendar({ events, onDateClick, onEventClick }: Schedu
         bgColor={bgColor}
         textColor={textColor}
         timeText={eventInfo.timeText}
+        onDelete={handleDelete}
       />
     );
   };

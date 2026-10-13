@@ -3,6 +3,8 @@
 import { db } from "@/lib/db";
 import { subMonths, addMonths } from "date-fns";
 import { requireUser } from "@/lib/auth";
+import { revalidatePath } from "next/cache";
+import { writeAuditLog } from "@/lib/audit";
 
 export interface CalendarEvent {
   id: string;
@@ -256,3 +258,102 @@ export async function quickReviewEvent(
         return { success: false, error: "Failed to update request" };
     }
 }
+
+export async function quickDeleteEvent(type: "ROOM" | "VEHICLE", eventId: string) {
+    try {
+        const currentUser = await requireUser();
+        const user = await db.user.findUnique({ where: { id: currentUser.id } });
+        if (!user) {
+            return { success: false, error: "Unauthorized." };
+        }
+
+        const id = eventId.replace(/^(room-|vehicle-)/, "");
+        const isAdmin = user.role === "ADMIN" || user.role === "SUPER_ADMIN";
+
+        if (type === "ROOM") {
+            const reservation = await db.roomReservation.findUnique({
+                where: { id },
+            });
+            if (!reservation) {
+                return { success: false, error: "Room reservation not found." };
+            }
+
+            const isOwner = (user.personnelId && reservation.requesterPersonnelId === user.personnelId) ||
+                            (reservation.requestedByUserId === user.id);
+
+            if (!isAdmin && !isOwner) {
+                return { success: false, error: "Unauthorized. You do not have permission to delete this reservation." };
+            }
+
+            if (reservation.calendarActivityId) {
+                await db.calendarActivity.deleteMany({
+                    where: { id: reservation.calendarActivityId }
+                });
+            }
+
+            await db.roomReservation.delete({
+                where: { id }
+            });
+
+            await writeAuditLog({
+                userId: user.id,
+                action: "DELETE",
+                entityType: "RoomReservation",
+                entityId: id,
+                oldValueJson: reservation
+            });
+
+            revalidatePath("/room-reservations");
+            revalidatePath("/room-reservations/admin");
+            revalidatePath("/calendar");
+            return { success: true };
+        } else if (type === "VEHICLE") {
+            const request = await db.vehicleRequest.findUnique({
+                where: { id },
+            });
+            if (!request) {
+                return { success: false, error: "Vehicle request not found." };
+            }
+
+            const isOwner = (user.personnelId && request.requesterPersonnelId === user.personnelId) ||
+                            (request.requestedByUserId === user.id);
+
+            if (!isAdmin && !isOwner) {
+                return { success: false, error: "Unauthorized. You do not have permission to delete this request." };
+            }
+
+            await db.vehicleRequestPassenger.deleteMany({
+                where: { requestId: id }
+            });
+
+            if (request.calendarActivityId) {
+                await db.calendarActivity.deleteMany({
+                    where: { id: request.calendarActivityId }
+                });
+            }
+
+            await db.vehicleRequest.delete({
+                where: { id }
+            });
+
+            await writeAuditLog({
+                userId: user.id,
+                action: "DELETE",
+                entityType: "VehicleRequest",
+                entityId: id,
+                oldValueJson: request
+            });
+
+            revalidatePath("/vehicle-requests");
+            revalidatePath("/vehicle-requests/admin");
+            revalidatePath("/calendar");
+            return { success: true };
+        }
+
+        return { success: false, error: "Invalid type" };
+    } catch (error) {
+        console.error("Error deleting event:", error);
+        return { success: false, error: "Failed to delete schedule." };
+    }
+}
+

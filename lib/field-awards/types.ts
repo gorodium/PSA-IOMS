@@ -91,6 +91,7 @@ export interface ScoringNode {
   id: string;
   code: string;
   title: string;
+  description?: string | null;
   parentId: string | null;
   /** Child nodes in display order */
   children: ScoringNode[];

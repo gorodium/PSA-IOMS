@@ -5,8 +5,10 @@ import dynamic from "next/dynamic";
 const SchedulingCalendar = dynamic(() => import("./SchedulingCalendar").then((mod) => mod.SchedulingCalendar), {
   ssr: false,
 });
-import { getSchedulingData, CalendarEvent, quickReviewEvent } from "@/lib/scheduling-actions";
+import { getSchedulingData, CalendarEvent, quickReviewEvent, quickDeleteEvent } from "@/lib/scheduling-actions";
 import { QuickReserveDialog, ResourceOption } from "./QuickReserveDialog";
+import { Button } from "@/components/ui/button";
+import { Trash2 } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -44,6 +46,8 @@ export function SchedulingClient({
   const [selectedDate, setSelectedDate] = useState<Date | undefined>();
   const [eventToApprove, setEventToApprove] = useState<CalendarEvent | null>(null);
   const [eventToView, setEventToView] = useState<CalendarEvent | null>(null);
+  const [eventToDelete, setEventToDelete] = useState<CalendarEvent | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [isApproving, setIsApproving] = useState(false);
   const [rejectMode, setRejectMode] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
@@ -95,6 +99,9 @@ export function SchedulingClient({
             setEventToView(event);
           }
         }}
+        onDeleteClick={(event: CalendarEvent) => {
+          setEventToDelete(event);
+        }}
       />
 
       {dialogOpen && (
@@ -134,6 +141,21 @@ export function SchedulingClient({
             <AlertDialogCancel disabled={isApproving}>Cancel</AlertDialogCancel>
             {!rejectMode ? (
               <>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  disabled={isApproving}
+                  className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/30 gap-1 mr-auto"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    const target = eventToApprove;
+                    setEventToApprove(null);
+                    setEventToDelete(target);
+                  }}
+                >
+                  <Trash2 className="h-4 w-4" />
+                  Delete
+                </Button>
                 <AlertDialogAction
                   disabled={isApproving}
                   className="bg-red-600 hover:bg-red-700 text-white"
@@ -183,6 +205,57 @@ export function SchedulingClient({
                 {isApproving ? "Rejecting..." : "Confirm Reject"}
               </AlertDialogAction>
             )}
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete Confirmation Prompt Dialog */}
+      <AlertDialog open={!!eventToDelete} onOpenChange={(open) => !open && !isDeleting && setEventToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-destructive">
+              <Trash2 className="h-5 w-5" />
+              Delete Schedule
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to permanently delete this {eventToDelete?.type === "ROOM" ? "room reservation" : "vehicle request"}?
+              {eventToDelete?.title && (
+                <span className="block mt-2 font-medium text-foreground">
+                  &ldquo;{eventToDelete.title}&rdquo;
+                </span>
+              )}
+              <span className="block mt-1 text-xs text-muted-foreground">
+                This action cannot be undone and will permanently remove this schedule.
+              </span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={isDeleting}
+              className="bg-red-600 hover:bg-red-700 text-white"
+              onClick={async (e) => {
+                e.preventDefault();
+                if (!eventToDelete) return;
+                setIsDeleting(true);
+                const res = await quickDeleteEvent(eventToDelete.type as "ROOM" | "VEHICLE", eventToDelete.id);
+                if (res.success) {
+                  await fetchData();
+                  if (eventToView?.id === eventToDelete.id) {
+                    setEventToView(null);
+                  }
+                  if (eventToApprove?.id === eventToDelete.id) {
+                    setEventToApprove(null);
+                  }
+                  setEventToDelete(null);
+                } else {
+                  alert("Failed to delete schedule: " + (res.error || "Unknown error"));
+                }
+                setIsDeleting(false);
+              }}
+            >
+              {isDeleting ? "Deleting..." : "Delete Permanently"}
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -247,6 +320,31 @@ export function SchedulingClient({
                 <div className="grid grid-cols-3 text-sm">
                   <span className="font-semibold text-red-500">Rejection Reason:</span>
                   <span className="col-span-2">{(eventToView.extendedProps.rejectionReason as string) || "No reason provided"}</span>
+                </div>
+              )}
+
+              {(eventToView.type === "ROOM" || eventToView.type === "VEHICLE") && (
+                <div className="pt-4 border-t mt-6 flex items-center justify-between">
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    size="sm"
+                    className="gap-1.5"
+                    onClick={() => {
+                      setEventToDelete(eventToView);
+                    }}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    Delete Schedule
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setEventToView(null)}
+                  >
+                    Close
+                  </Button>
                 </div>
               )}
             </div>
